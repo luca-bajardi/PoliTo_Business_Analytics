@@ -1,0 +1,136 @@
+---
+title: "Analisi Colonial Broadcasting - Tesina"
+author: "Luca Bajardi"
+date: "22/4/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+### Carichiamo i dati leggendo il file csv e settiamo il seme del generatore pseudo-casuale così da avere i risultati sempre uguali
+```{r read}
+set.seed(1)
+CBC = read.csv(file = "02 - Dati per caso Colonial Broadcasting.csv", header=T)
+attach(CBC)
+```
+Il dataset che stiamo analizzando ha 88 osservazioni e 16 variabili:
+```{r dim}
+dim(CBC)
+```
+Le variabili si chiamano:
+```{r names}
+names(CBC)
+```
+Vediamo l'inizio del dataset per vedere com'è fatto:
+```{r head}
+head(CBC)
+```
+Vediamo che non ci sono elementi NA (Not Available) quindi posso usare tutte le osservazioni nel dataset:
+```{r na}
+sum(is.na(CBC$rating))
+```
+
+Visto che il dataset è piccolo prendiamo un test set piccolo (30% del dataset totale)
+```{r train}
+train=sample(88,88*0.7)
+```
+Considero il dataset CBC, ma per la regressione prendo solo il sottoinsieme train
+```{r lm1}
+lm.fit=lm(rating~prevratings,data=CBC,subset=train)
+```
+Dal summary vediamo che prevratings ha un coefficiente di regressione positivo. Questo fatto ha un senso logico perché il fatto che il programma precedente ha un rating più alto implica che le persone rimangono sul quel canale e non lo cambiano a fine del programma precedente.
+```{r summary_lm1}
+summary(lm.fit)
+```
+Però questo non spiega tutto il modello infatti il valore $R^2$ è solo $0.1717$. Possiamo vedere anche nel `plot` che non tutta la variabilità è rappresentata.
+```{r plot_lm1, fig.width=6, fig.height=4}
+plot(prevratings,rating)
+abline(lm.fit, col="red")
+```
+
+Possiamo calcolare il MSE (Mean Square Error):
+$$MSE = \displaystyle  \frac{\displaystyle \sum _{i\in test} (y_{i}-\widehat{y}_{i})^{2}}{|test|}$$
+```{r MSE_lm1}
+mean((rating-predict(lm.fit,CBC))[-train]^2)
+```
+Il MSE di un solo modello non serve a niente, quindi dobbiamo calcolarlo anche di altri modelli:
+<!---
+```{r MSE_lm2}
+lm.fit2=lm(rating~poly(prevratings,2),data=CBC,subset=train)
+mean((rating-predict(lm.fit2,CBC))[-train]^2) #l'errore diminuisce
+summary(lm.fit2)$r.squared
+lm.fit3=lm(rating~poly(prevratings,3),data=CBC,subset=train)
+mean((rating-predict(lm.fit3,CBC))[-train]^2)
+summary(lm.fit3)$r.squared
+lm.fit4=lm(rating~poly(prevratings,4),data=CBC,subset=train)
+mean((rating-predict(lm.fit3,CBC))[-train]^2)
+summary(lm.fit4)$r.squared
+lm.fit5=lm(rating~poly(prevratings,5),data=CBC,subset=train)
+mean((rating-predict(lm.fit3,CBC))[-train]^2)
+summary(lm.fit5)$r.squared
+lm.fit6=lm(rating~poly(prevratings,6),data=CBC,subset=train)
+mean((rating-predict(lm.fit3,CBC))[-train]^2)
+summary(lm.fit6)$r.squared
+lm.fit16=lm(rating~poly(prevratings,16),data=CBC,subset=train)
+mean((rating-predict(lm.fit16,CBC))[-train]^2)
+summary(lm.fit16)
+```
+--->
+```{r MSE_lm_n, options = options(digits=4)}
+potenze = c(1,2,3,4,5,6,10,16)
+ma<-matrix(,nrow=3,ncol=length(potenze))
+ma[1,]=potenze
+for (i in 1:length(potenze)){
+  pwr = potenze[i]
+  lm.fit_n= lm(rating~poly(prevratings,pwr),data=CBC,subset=train)
+  ma[2,i] = mean((rating-predict(lm.fit_n,CBC))[-train]^2)
+  ma[3,i] = summary(lm.fit_n)$r.squared
+}
+ma
+```
+Possiamo vedere che aumentando il grado dei polinomi in funzione di `prevratings` non diminuisce il MSE, ma aumenta $R^2$, questo significa che stiamo facendo overfitting.
+
+```{r summary_lm1_, options = options(digits=7)}
+library(boot)
+glm.fit=glm(rating~prevratings,data=CBC)
+cv.err=cv.glm(CBC,glm.fit) #passa la struttura dati e il modello
+names(cv.err)
+cv.err$K
+cv.err$delta
+```
+
+```{r LOOCV}
+#proviamo con polinomi con grado massimo diverso
+cv.error=rep(0,5) #numeric(5)
+for (i in 1:5){ #LOOCV su 5 modelli
+  glm.fit=glm(rating~poly(prevratings,i),data=CBC)
+  cv.error[i]=cv.glm(CBC,glm.fit)$delta[1]
+}
+cv.error
+```
+
+
+<!--- train=sample(392,196) #indici del training set, quindi prendo un campione di 196 elementi (metà)--->
+#campionamento senza reinserimento
+#slip come voglio 50-50,70-30
+train #indici del training set
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
