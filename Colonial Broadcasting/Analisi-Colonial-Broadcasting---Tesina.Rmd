@@ -2,14 +2,18 @@
 title: "Analisi Colonial Broadcasting - Tesina"
 author: "Luca Bajardi"
 date: "22/4/2020"
-output: pdf_document
+output:
+  pdf_document: default
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
+
 ```
 ### Carichiamo i dati leggendo il file csv e settiamo il seme del generatore pseudo-casuale così da avere i risultati sempre uguali
 ```{r read}
+rm(list =ls())
 set.seed(1)
 CBC = read.csv(file = "02 - Dati per caso Colonial Broadcasting.csv", header=T)
 attach(CBC)
@@ -39,22 +43,23 @@ Considero il dataset CBC, ma per la regressione prendo solo il sottoinsieme trai
 ```{r lm1}
 lm.fit=lm(rating~prevratings,data=CBC,subset=train)
 ```
-Dal summary vediamo che prevratings ha un coefficiente di regressione positivo. Questo fatto ha un senso logico perché il fatto che il programma precedente ha un rating più alto implica che le persone rimangono sul quel canale e non lo cambiano a fine del programma precedente.
+Dal summary vediamo che prevratings ha un coefficiente di regressione positivo. Questo fatto ha un senso logico perché il fatto che il programma precedente ha un rating più alto implica che le persone rimangono sul quel canale e non lo cambiano a fine del programma precedente. Inoltre la variabile ``prevratings'', avendo un p-value sufficientemente piccolo, risulta significativo.
+
 ```{r summary_lm1}
 summary(lm.fit)
 ```
-Però questo non spiega tutto il modello infatti il valore $R^2$ è solo $0.1717$. Possiamo vedere anche nel `plot` che non tutta la variabilità è rappresentata.
+Però il modello non spiega tutta la variabilità, infatti il valore $R^2$ è solo $0.1717$. L'obiettivo è quello di massimizzare questo valore, in modo da poter predire il valore del rating con la maggiore accuratezza possibile. Possiamo vedere anche nel `plot`, che non tutta la variabilità è rappresentata.
 ```{r plot_lm1, fig.width=6, fig.height=4}
-plot(prevratings,rating)
+plot(prevratings, rating)
 abline(lm.fit, col="red")
 ```
 
-Possiamo calcolare il MSE (Mean Square Error):
+Possiamo calcolare il MSE (Mean Square Error) andando a validare questo modello sul sottoinsieme di test:
 $$MSE = \displaystyle  \frac{\displaystyle \sum _{i\in test} (y_{i}-\widehat{y}_{i})^{2}}{|test|}$$
 ```{r MSE_lm1}
 mean((rating-predict(lm.fit,CBC))[-train]^2)
 ```
-Il MSE di un solo modello non serve a niente, quindi dobbiamo calcolarlo anche di altri modelli:
+Il MSE di un solo modello non è una misura molto indicativa perchè non abbiamo termini di paragoni, quindi dobbiamo calcolarlo anche di altri modelli:
 <!---
 ```{r MSE_lm2}
 lm.fit2=lm(rating~poly(prevratings,2),data=CBC,subset=train)
@@ -79,7 +84,7 @@ summary(lm.fit16)
 --->
 ```{r MSE_lm_n, options = options(digits=4)}
 potenze = c(1,2,3,4,5,6,10,16)
-ma<-matrix(,nrow=3,ncol=length(potenze))
+ma<-matrix(nrow=3,ncol=length(potenze))
 ma[1,]=potenze
 for (i in 1:length(potenze)){
   pwr = potenze[i]
@@ -89,7 +94,7 @@ for (i in 1:length(potenze)){
 }
 ma
 ```
-Possiamo vedere che aumentando il grado dei polinomi in funzione di `prevratings` non diminuisce il MSE, ma aumenta $R^2$, questo significa che stiamo facendo overfitting.
+Possiamo vedere che aumentando il grado dei polinomi in funzione di `prevratings` non diminuisce il MSE, ma aumenta $R^2$, questo significa che stiamo facendo overfitting. Questi diversi esperimenti, probabilmente ci suggeriscono che utilizzare solo questa variabile potrebbe non essere sufficiente per prevedere il rating.
 
 ```{r summary_lm1_, options = options(digits=7)}
 library(boot)
@@ -115,22 +120,165 @@ cv.error
 #campionamento senza reinserimento
 #slip come voglio 50-50,70-30
 train #indici del training set
-## R Markdown
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
+Con la funzione `regsubsets` possiamo, in modo automatico, selezionare quelle variabili che sono le migliori per predire la variabile risposta, quando viene fissato il numero totale di variabili da utilizzare nel modello. Il termine migliore si riferisce alle prestazioni, guardando la RSS. Utilizziamo il dataset eliminsando la colonna che contiene la media dei rating di programmi mandati in onda dalle reti concorrenti. Infatti, questo valore è molto difficile da prevedere e potrebbe essere rischioso includerlo nel modello in quanto potrebbe portare  a conclusioni sbagliate.
+```{r subset selection}
+library(leaps)
+CBC$network=as.factor(CBC$network)
+CBC$day=as.factor(CBC$day)
+CBC$month=as.factor(CBC$month)
+CBCr=CBC[, 1:7]
+regfit.full=regsubsets(rating~.,CBCr,nvmax=15)
+summary(regfit.full)
+reg.summary=summary(regfit.full)
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+Osserviamo che, come ci potremmo aspettare, l'$R^2$ aumenta in maniera monotona all'aumentare delle variabili, ma questo non necessariamente ci fa concludere che il modello è migliore.
+```{r rsq}
+reg.summary$rsq
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Per questo sarebbe opportuno considerare altri indici, al fine di capire qual è il giusto equilibrio tra numero di variabili e proporzione della variabilità spiegata. 
+
+Poichè stiamo confrontando modelli con un numero diverso di variabili, guardare solamente all'$R^2$, potrebbe non fornirci un'informazione utile o quanto meno un'informazione piuttosto distorta. A questo proposito sarebbe utile utilizzare altri indici come $R^2_{adj}$, il $C_p$ e il $BIC$:
+
+* $R^2_{adj}$ è definito dal seguente rapporto dove $q$ rappresenta il numero di variabili ed $n$ il numero di osservazioni: $$R^2_{adj}=1- \displaystyle \frac{\displaystyle \frac{SSR}{(n-q-1)}}{ \displaystyle \frac{TSS}{(n-1)}}$$
+
+* $C_p$, definendo $p=q+1$ e $\sigma^2$ come la stima dell'errore della varianza, il Mallow's $C_p$, si calcola come:
+$$C_p=\frac {1}{n}(SSR+2p\sigma^2)$$
+
+* $BIC$ (Bayesian Information Criterion) è definito da:
+$$BIC=\frac {1}{n}(SSR+log(n) p\sigma^2)$$
+In questo caso l'uso di più variabili viene penalizzato maggiormente rispetto all'utilizzao del $C_p$ perchè in genere il logaritmo del numero delle variabili tende ad essere più grande di due. In generale quindi, utilizzando questo parametro, otterremo un modello più conservativo.
+
+```{r Radj, Cp, BIC}
+par(mfrow=c(2,2))
+plot(reg.summary$rss,xlab="Number of Variables",ylab="RSS",type="l")
+plot(reg.summary$adjr2,xlab="Number of Variables",ylab="Adjusted RSq",type="l")
+t=which.max(reg.summary$adjr2)
+points(t,reg.summary$adjr2[t], col="red",cex=2,pch=20)
+plot(reg.summary$cp,xlab="Number of Variables",ylab="Cp",type='l')
+q=which.min(reg.summary$cp)
+points(q,reg.summary$cp[q],col="red",cex=2,pch=20)
+u=which.min(reg.summary$bic)
+plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
+points(u,reg.summary$bic[u],col="red",cex=2,pch=20)
+```
+```{r migliore sottoinsieme, validazione}
+# Choosing Among Models using the cross-validation approach
+set.seed(1)
+train=sample(c(TRUE,FALSE), nrow(CBC),rep=TRUE)
+test=(!train) #complemento
+regfit.best=regsubsets(rating~.,data=CBCr[train,],nvmax=15)
+test.mat=model.matrix(rating~.,data=CBCr[test,])
+#estrae dal dateset è la matrice X, potrebbe servire per i calcoli
+val.errors=rep(NA,12)
+for(i in 1:12){
+  coefi=coef(regfit.best,id=i)
+  pred=test.mat[,names(coefi)]%*%coefi 
+  #prodotto righe per colonne
+  val.errors[i]=mean((CBCr$rating[test]-pred)^2)
+}
+val.errors
+which.min(val.errors)
+```
+```{r best_model}
+coef(regfit.best,1)
+```
+```{r F/B Stepwise Selection}
+regfit.fwd=regsubsets(rating~.,data=CBCr,nvmax=15,method="forward")
+summary(regfit.fwd)
+regfit.bwd=regsubsets(rating~.,data=CBCr,nvmax=15,method="backward")
+summary(regfit.bwd)
+```
+
+
+
+```{r F/B Cross Validation}
+k=10
+ predict.regsubsets=function(object,newdata,id,...){
+  form=as.formula(object$call[[2]])
+  mat=model.matrix(form,newdata)
+  coefi=coef(object,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi
+}
+set.seed(1)
+folds=sample(1:k,nrow(CBC),replace=TRUE)
+cv.errors=matrix(NA,k,15, dimnames=list(NULL, paste(1:15)))
+for(j in 1:k){
+  best.fit=regsubsets(rating~.,data=CBCr[folds!=j,],nvmax=15)
+  for(i in 1:15){
+    pred=predict(best.fit,CBCr[folds==j,],id=i)
+    cv.errors[j,i]=mean( (CBC$rating[folds==j]-pred)^2)
+  }
+}
+mean.cv.errors=apply(cv.errors,2,mean)
+mean.cv.errors
+min=which.min(mean.cv.errors)
+par(mfrow=c(1,1))
+plot(mean.cv.errors,type='b')
+reg.best=regsubsets(rating~.,data=CBC, nvmax=15)
+```
+
+```{r best model_cross validation}
+coef(reg.best,min)
+```
+
+## Regressione Ridge e Lasso 
+```{r regression}
+library(glmnet)
+CBC = read.csv(file = "02 - Dati per caso Colonial Broadcasting.csv", header=T)
+x=model.matrix(rating~.,CBC)[,-1] #tolgo l'intercetta
+#perchè Beta_0 non va penalizzato
+y=CBC$rating
+grid=10^seq(10,-2,length=100)
+```
+
+La funzione `glmnet` implementa sia i due casi estremi di regressione ridge e lasso, sia regressioni intermedie a seconda del valore di $\alpha$ che fissiamo.
+```{r ridge}
+ridge.mod=glmnet(x,y,alpha=0,lambda=grid)
+dim(coef(ridge.mod))
+```
+In questo modo abbiamo ottenuto 100 diversi modelli di regressione, uno per ogni valore di $\lambda$. Invece di utilizzare tutti i dati per la costruzione del modello, potremmo dividerli in un insieme di training e uno di test e utilizzando la cross-validation scegliere il miglior valore di $\lambda$
+
+```{r best lambda}
+set.seed(1)
+train=sample(1:nrow(x), nrow(x)/2)
+test=(-train)
+y.test=y[test]
+cv.out=cv.glmnet(x[train,],y[train],alpha=0)
+plot(cv.out)
+#MSE in funzione di lamda per trovare quello migliore
+#c'è una certa variabilità nella stima
+bestlam=cv.out$lambda.min
+bestlam
+ridge.pred=predict(ridge.mod,s=bestlam,newx=x[test,])
+mean((ridge.pred-y.test)^2)
+
+#dopo che ho capito che questo è il modello migliore, vado a
+#prevederlo con tutti i dati
+out=glmnet(x,y,alpha=0)
+predict(out,type="coefficients",s=bestlam)[1:17,]
+```
+
+```{r lasso}
+lasso.mod=glmnet(x[train,],y[train],alpha=1,lambda=grid)
+set.seed(1)
+cv.out=cv.glmnet(x[train,],y[train],alpha=1)
+plot(cv.out)
+bestlam=cv.out$lambda.min
+bestlam
+lasso.pred=predict(lasso.mod,s=bestlam,newx=x[test,])
+mean((lasso.pred-y.test)^2)
+out=glmnet(x,y,alpha=1,lambda=grid)
+lasso.coef=predict(out,type="coefficients",s=bestlam)[1:17,]
+lasso.coef
+```
+
+```{r confronto}
+plot(lasso.mod)
+plot(ridge.mod)
+```
+
+
