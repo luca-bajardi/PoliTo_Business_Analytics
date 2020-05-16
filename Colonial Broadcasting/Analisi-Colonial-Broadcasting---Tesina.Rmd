@@ -1,7 +1,7 @@
 ---
 title: "Analisi Colonial Broadcasting - Tesina"
-author: "Luca Bajardi"
-date: "22/4/2020"
+author: "Luca Bajardi e Francesca Collini"
+date: "15/5/2020"
 output:
   pdf_document: default
   word_document: default
@@ -11,7 +11,8 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 
 ```
-### Carichiamo i dati leggendo il file csv e settiamo il seme del generatore pseudo-casuale così da avere i risultati sempre uguali
+# Caricamento dati, esplorazione e preprocessing
+Carichiamo i dati leggendo il file csv e settiamo il seme del generatore pseudo-casuale così da avere i risultati sempre uguali
 ```{r read}
 rm(list =ls())
 set.seed(1)
@@ -34,7 +35,11 @@ Vediamo che non ci sono elementi NA (Not Available) quindi posso usare tutte le 
 ```{r na}
 sum(is.na(CBC$rating))
 ```
+```{r hist}
+hist(rating)
+```
 
+# Modello lineare con una variabile
 Visto che il dataset è piccolo prendiamo un test set piccolo (30% del dataset totale)
 ```{r train}
 train=sample(88,88*0.7)
@@ -96,35 +101,37 @@ ma
 ```
 Possiamo vedere che aumentando il grado dei polinomi in funzione di `prevratings` non diminuisce il MSE, ma aumenta $R^2$, questo significa che stiamo facendo overfitting. Questi diversi esperimenti, probabilmente ci suggeriscono che utilizzare solo questa variabile potrebbe non essere sufficiente per prevedere il rating.
 
+# LOOCV
+Utilizzando la libreria `boot` possiamo fare la Leave-one-out cross-validation così da vedere l'errore di previsione togliendo ogni volta un elemento dal training set.
 ```{r summary_lm1_, options = options(digits=7)}
 library(boot)
-glm.fit=glm(rating~prevratings,data=CBC)
+glm.fit=glm(rating~prevratings,data=CBC) #costruisco il modello GLM
 cv.err=cv.glm(CBC,glm.fit) #passa la struttura dati e il modello
 names(cv.err)
 cv.err$K
-cv.err$delta
+cv.err$delta[1]
 ```
-
+Seguendo i ragionamenti fatti prima con un training set del 70%, possiamo eseguire il LOOCV su 5 modelli, ognuno dei quali con polinomi di grado massimo diverso.
 ```{r LOOCV}
-#proviamo con polinomi con grado massimo diverso
-cv.error=rep(0,5) #numeric(5)
-for (i in 1:5){ #LOOCV su 5 modelli
+cv.error=rep(0,5)
+for (i in 1:5){
   glm.fit=glm(rating~poly(prevratings,i),data=CBC)
   cv.error[i]=cv.glm(CBC,glm.fit)$delta[1]
 }
 cv.error
 ```
+Come abbiamo notato prima, anche eseguendo la LOOCV possiamo vedere che aumentando il grado massimo del polinomio l'errore non diminuisce, anzi aumenta all'aumentare del grado massimo. Per questo dobbiamo provare a prevedere il rating con l'utilizzo di un insieme variabili.
 
-
-<!--- train=sample(392,196) #indici del training set, quindi prendo un campione di 196 elementi (metà)--->
+<!--- train=sample(392,196) #indici del training set, quindi prendo un campione di 196 elementi (metà)
 #campionamento senza reinserimento
 #slip come voglio 50-50,70-30
 train #indici del training set
-
-Con la funzione `regsubsets` possiamo, in modo automatico, selezionare quelle variabili che sono le migliori per predire la variabile risposta, quando viene fissato il numero totale di variabili da utilizzare nel modello. Il termine migliore si riferisce alle prestazioni, guardando la RSS. Utilizziamo il dataset eliminsando la colonna che contiene la media dei rating di programmi mandati in onda dalle reti concorrenti. Infatti, questo valore è molto difficile da prevedere e potrebbe essere rischioso includerlo nel modello in quanto potrebbe portare  a conclusioni sbagliate.
-```{r subset selection}
+--->
+# Subset selection
+Con la funzione `regsubsets` possiamo, in modo automatico, selezionare quelle variabili che sono le migliori per predire la variabile risposta, quando viene fissato il numero totale di variabili da utilizzare nel modello. Il termine migliore si riferisce alle prestazioni, guardando la RSS. Utilizziamo il dataset eliminando la colonna che contiene la media dei rating di programmi mandati in onda dalle reti concorrenti. Infatti, questo valore è molto difficile da prevedere e potrebbe essere rischioso includerlo nel modello in quanto potrebbe portare  a conclusioni sbagliate.
+```{r subset selection, options = options(warn = -1)}
 library(leaps)
-CBC$network=as.factor(CBC$network)
+CBC$network=factor(CBC$network,levels = c("CBC","ABN","BBS"))
 CBC$day=as.factor(CBC$day)
 CBC$month=as.factor(CBC$month)
 CBCr=CBC[, 1:7]
@@ -134,7 +141,7 @@ reg.summary=summary(regfit.full)
 ```
 
 Osserviamo che, come ci potremmo aspettare, l'$R^2$ aumenta in maniera monotona all'aumentare delle variabili, ma questo non necessariamente ci fa concludere che il modello è migliore.
-```{r rsq}
+```{r rsq, options = options(warn = 0)}
 reg.summary$rsq
 ```
 
@@ -164,6 +171,7 @@ u=which.min(reg.summary$bic)
 plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
 points(u,reg.summary$bic[u],col="red",cex=2,pch=20)
 ```
+
 ```{r migliore sottoinsieme, validazione}
 # Choosing Among Models using the cross-validation approach
 set.seed(1)
@@ -182,9 +190,11 @@ for(i in 1:12){
 val.errors
 which.min(val.errors)
 ```
+
 ```{r best_model}
 coef(regfit.best,1)
 ```
+
 ```{r F/B Stepwise Selection}
 regfit.fwd=regsubsets(rating~.,data=CBCr,nvmax=15,method="forward")
 summary(regfit.fwd)
@@ -196,7 +206,7 @@ summary(regfit.bwd)
 
 ```{r F/B Cross Validation}
 k=10
- predict.regsubsets=function(object,newdata,id,...){
+predict.regsubsets=function(object,newdata,id,...){
   form=as.formula(object$call[[2]])
   mat=model.matrix(form,newdata)
   coefi=coef(object,id=id)
@@ -225,10 +235,10 @@ reg.best=regsubsets(rating~.,data=CBC, nvmax=15)
 coef(reg.best,min)
 ```
 
-## Regressione Ridge e Lasso 
-```{r regression}
+# Regressione Ridge e Lasso 
+```{r regression, options = options(warn = -1)}
 library(glmnet)
-CBC = read.csv(file = "02 - Dati per caso Colonial Broadcasting.csv", header=T)
+#CBC = read.csv(file = "02 - Dati per caso Colonial Broadcasting.csv", header=T)
 x=model.matrix(rating~.,CBC)[,-1] #tolgo l'intercetta
 #perchè Beta_0 non va penalizzato
 y=CBC$rating
@@ -236,7 +246,7 @@ grid=10^seq(10,-2,length=100)
 ```
 
 La funzione `glmnet` implementa sia i due casi estremi di regressione ridge e lasso, sia regressioni intermedie a seconda del valore di $\alpha$ che fissiamo.
-```{r ridge}
+```{r ridge, options = options(warn = 0)}
 ridge.mod=glmnet(x,y,alpha=0,lambda=grid)
 dim(coef(ridge.mod))
 ```
