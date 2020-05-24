@@ -175,7 +175,7 @@ points(u,reg.summary$bic[u],col="red",cex=2,pch=20)
 ```{r migliore sottoinsieme, validazione}
 # Choosing Among Models using the cross-validation approach
 set.seed(1)
-train=sample(c(TRUE,FALSE), nrow(CBC),rep=TRUE)
+train=sample(c(TRUE,FALSE), nrow(CBCr),rep=TRUE)
 test=(!train) #complemento
 regfit.best=regsubsets(rating~.,data=CBCr[train,],nvmax=15)
 test.mat=model.matrix(rating~.,data=CBCr[test,])
@@ -192,7 +192,8 @@ which.min(val.errors)
 ```
 
 ```{r best_model}
-coef(regfit.best,1)
+#coef(regfit.best,1)
+attributes(CBCr)
 ```
 
 ```{r F/B Stepwise Selection}
@@ -201,9 +202,15 @@ summary(regfit.fwd)
 regfit.bwd=regsubsets(rating~.,data=CBCr,nvmax=15,method="backward")
 summary(regfit.bwd)
 ```
-
-
-
+<!---
+```{r F/B Stepwise Selection interazioni}
+#rating~network*fact*stars*month*day*prevratings
+regfit.fwd=regsubsets(rating~network*fact*stars*month*day*prevratings,data=CBCr,nvmax=15,method="forward")
+summary(regfit.fwd)
+#regfit.bwd=regsubsets(rating~.,data=CBCr,nvmax=15,method="backward")
+#summary(regfit.bwd)
+```
+--->
 ```{r F/B Cross Validation}
 k=10
 predict.regsubsets=function(object,newdata,id,...){
@@ -214,13 +221,13 @@ predict.regsubsets=function(object,newdata,id,...){
   mat[,xvars]%*%coefi
 }
 set.seed(1)
-folds=sample(1:k,nrow(CBC),replace=TRUE)
+folds=sample(1:k,nrow(CBCr),replace=TRUE)
 cv.errors=matrix(NA,k,15, dimnames=list(NULL, paste(1:15)))
 for(j in 1:k){
   best.fit=regsubsets(rating~.,data=CBCr[folds!=j,],nvmax=15)
   for(i in 1:15){
     pred=predict(best.fit,CBCr[folds==j,],id=i)
-    cv.errors[j,i]=mean( (CBC$rating[folds==j]-pred)^2)
+    cv.errors[j,i]=mean( (CBCr$rating[folds==j]-pred)^2)
   }
 }
 mean.cv.errors=apply(cv.errors,2,mean)
@@ -228,15 +235,50 @@ mean.cv.errors
 min=which.min(mean.cv.errors)
 par(mfrow=c(1,1))
 plot(mean.cv.errors,type='b')
-reg.best=regsubsets(rating~.,data=CBC, nvmax=15)
+reg.best=regsubsets(rating~.,data=CBCr, nvmax=15)
 ```
 
-```{r best model_cross validation}
-coef(reg.best,min)
+<!---
+```{r F/B Cross Validation interazioni}
+k=10
+num_var_max=38
+predict.regsubsets=function(object,newdata,id,...){
+  form=as.formula(object$call[[2]])
+  mat=model.matrix(form,newdata)
+  coefi=coef(object,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi
+}
+set.seed(1)
+folds=sample(1:k,nrow(CBCr),replace=TRUE)
+cv.errors=matrix(NA,k,num_var_max, dimnames=list(NULL, paste(1:num_var_max)))
+for(j in 1:k){
+  best.fit=regsubsets(rating~network+fact+stars*month*day*prevratings,data=CBCr[folds!=j,],nvmax=num_var_max,method="forward")
+  for(i in 1:num_var_max){
+    pred=predict(best.fit,CBCr[folds==j,],id=i)
+    cv.errors[j,i]=mean( (CBCr$rating[folds==j]-pred)^2)
+  }
+}
+cv.errors
+mean.cv.errors=apply(cv.errors,2,mean)
+mean.cv.errors
+min=which.min(mean.cv.errors)
+par(mfrow=c(1,1))
+plot(mean.cv.errors,type='b')
+reg.best=regsubsets(rating~network+fact+stars*month*day*prevratings,data=CBCr, nvmax=num_var_max, method="forward")
 ```
+--->
+
+<!---
+```{r best model_cross validation, options = options(max.print = 20000)}
+summary(reg.best)
+coef(reg.best,min)
+#coef(reg.best,30)
+```
+--->
 
 # Regressione Ridge e Lasso 
-```{r regression, options = options(warn = -1)}
+```{r regression, options = options(warn = -1), options = options(max.print = 1000)}
 library(glmnet)
 #CBC = read.csv(file = "02 - Dati per caso Colonial Broadcasting.csv", header=T)
 x=model.matrix(rating~.,CBC)[,-1] #tolgo l'intercetta
