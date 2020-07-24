@@ -1,7 +1,7 @@
 ---
 title: "Analisi Colonial Broadcasting - Tesina"
-author: "Luca Bajardi e Francesca Collini"
-date: "15/5/2020"
+author: "Luca Bajardi"
+date: "22/4/2020"
 output:
   pdf_document: default
   word_document: default
@@ -11,8 +11,7 @@ output:
 knitr::opts_chunk$set(echo = TRUE)
 
 ```
-# Caricamento dati, esplorazione e preprocessing
-Carichiamo i dati leggendo il file csv e settiamo il seme del generatore pseudo-casuale così da avere i risultati sempre uguali
+### Carichiamo i dati leggendo il file csv e settiamo il seme del generatore pseudo-casuale così da avere i risultati sempre uguali
 ```{r read}
 rm(list =ls())
 set.seed(1)
@@ -31,24 +30,25 @@ Vediamo l'inizio del dataset per vedere com'è fatto:
 ```{r head}
 head(CBC)
 ```
-Vediamo che non ci sono elementi NA (Not Available) quindi posso usare tutte le osservazioni nel dataset:
+La variabile "Network" è categorica e può assumere tre diversi valori a seconda della rete sulla quale viene trasmesso il programma. Le variabili "Month" e "Day" indicano rispettivamente il mese ed il giorno della settimana in cui avviene la trasmissione e quindi sono entrambe categoriche. La variabile "Fact" è binaria e caratterizza i film, distinguendo quelli che sono basati su fatti reali da quelli di pura fantasia, mentre la variabile "Stars" è un valore quantitativo discreto che rappresenta il numero di attori che hanno ricevuto un ingaggio superiore a $300,000. Infine le informazioni "Previous rating" e "Competition" sono varibili quantitative continue che si riferiscono il primo al valore di rating del programma immediatamente precedente mandato in onda sulla stessa rete, e l'altro è una media dei valori dei rating degli altri programmi mandati in onda contemporaneamente dalle altre due reti.
+Utilizzando questi valori vorremo prevedere il valore di rating del film che stiamo considerando, che è espresso dal valore della variabile "Rating".
+
+Vediamo inoltre che non ci sono elementi NA (Not Available), quindi possiamo usare tutte le osservazioni nel dataset:
 ```{r na}
 sum(is.na(CBC$rating))
 ```
-```{r hist}
-hist(rating)
-```
 
-# Modello lineare con una variabile
-Visto che il dataset è piccolo prendiamo un test set piccolo (30% del dataset totale)
+Abbiamo a disposizione un dataset piccolo, che contiene solamente 88 osservazioni che vorremmo utilizzare sia per formulare il nostro modello di previsione (training set), sia per testarlo per capire quanto sono accurate le nostre previsioni. Per questo motivo, scegliamo arbitrariamente di considerare come test set il 30% del dataset totale e come training la parte rimanente.
+
 ```{r train}
 train=sample(88,88*0.7)
 ```
-Considero il dataset CBC, ma per la regressione prendo solo il sottoinsieme train
+
+Consideriamo il dataset CBC, ma per la formulazione del modello di regressione prendiamo solo il sottoinsieme train:
 ```{r lm1}
 lm.fit=lm(rating~prevratings,data=CBC,subset=train)
 ```
-Dal summary vediamo che prevratings ha un coefficiente di regressione positivo. Questo fatto ha un senso logico perché il fatto che il programma precedente ha un rating più alto implica che le persone rimangono sul quel canale e non lo cambiano a fine del programma precedente. Inoltre la variabile ``prevratings'', avendo un p-value sufficientemente piccolo, risulta significativo.
+Dal summary vediamo che "prevratings" ha un coefficiente di regressione positivo. Questo fatto ha un senso logico perché possiamo suppore che quando il programma precedente ha un rating più alto, le persone rimangono sul quel canale e non lo cambiano dopo la fine di quest'ultimo. Inoltre la variabile ``prevratings'', avendo un p-value sufficientemente piccolo, risulta significativa.
 
 ```{r summary_lm1}
 summary(lm.fit)
@@ -58,13 +58,19 @@ Però il modello non spiega tutta la variabilità, infatti il valore $R^2$ è so
 plot(prevratings, rating)
 abline(lm.fit, col="red")
 ```
+Per capire la qualità della nostra previsione e per misurare l'errore, possiamo considerare il valore atteso del quadrato della deviazione, il MSE (Mean Square Error):
+$$\textbf{E}[(y-\widehat{y})^2] =  \textbf{E}^2[(f(x_{0})-\widehat{f}({x}_{0})]+(\sigma_\epsilon)^2+ Var[\widehat{f}({x}_{0})]$$
+dove $y=f(x_0)+\epsilon$ e $\widehat{y}=\widehat{f}({x}_{0})$. Il primo termine viene chiamato bias, il secondo è l'errore irriducibile dovuto al rumore interinseco presente nel sistema, mentre l'ultimo termine rappresenta la varianza.
 
-Possiamo calcolare il MSE (Mean Square Error) andando a validare questo modello sul sottoinsieme di test:
+Possiamo calcolare il MSE andando a validare questo modello sul sottoinsieme di test. L'errore viene definito come il rapporto tra la somma, su tutte le osservazioni presenti nel test set, del quadrato dell'errore sulle singole osservazioni, diviso per la cardinalità dell'insieme test.
+
 $$MSE = \displaystyle  \frac{\displaystyle \sum _{i\in test} (y_{i}-\widehat{y}_{i})^{2}}{|test|}$$
 ```{r MSE_lm1}
 mean((rating-predict(lm.fit,CBC))[-train]^2)
 ```
-Il MSE di un solo modello non è una misura molto indicativa perchè non abbiamo termini di paragoni, quindi dobbiamo calcolarlo anche di altri modelli:
+
+
+Il MSE di un solo modello non è una misura molto indicativa perchè non abbiamo termini di paragone, quindi dobbiamo calcolarlo anche per altri modelli e valutare quale sia il migliore andando a selezionare quello con l'errore più piccolo.
 <!---
 ```{r MSE_lm2}
 lm.fit2=lm(rating~poly(prevratings,2),data=CBC,subset=train)
@@ -89,49 +95,82 @@ summary(lm.fit16)
 --->
 ```{r MSE_lm_n, options = options(digits=4)}
 potenze = c(1,2,3,4,5,6,10,16)
-ma<-matrix(nrow=3,ncol=length(potenze))
-ma[1,]=potenze
-for (i in 1:length(potenze)){
-  pwr = potenze[i]
+ma<-matrix(nrow=3,ncol=length(potenze)+1)
+ma[1,1]="potenze"
+ma[2,1]="MSE"
+ma[3,1]="R^2"
+ma[1,2:(length(potenze)+1)]=potenze
+for (i in 2:(length(potenze)+1)){
+  pwr = potenze[i-1]
   lm.fit_n= lm(rating~poly(prevratings,pwr),data=CBC,subset=train)
   ma[2,i] = mean((rating-predict(lm.fit_n,CBC))[-train]^2)
   ma[3,i] = summary(lm.fit_n)$r.squared
 }
 ma
 ```
-Possiamo vedere che aumentando il grado dei polinomi in funzione di `prevratings` non diminuisce il MSE, ma aumenta $R^2$, questo significa che stiamo facendo overfitting. Questi diversi esperimenti, probabilmente ci suggeriscono che utilizzare solo questa variabile potrebbe non essere sufficiente per prevedere il rating.
 
-# LOOCV
-Utilizzando la libreria `boot` possiamo fare la Leave-one-out cross-validation così da vedere l'errore di previsione togliendo ogni volta un elemento dal training set.
+Possiamo vedere che, aumentando il grado dei polinomi in funzione di `prevratings`, non diminuisce il MSE, ma aumenta l'$R^2$, questo significa che stiamo facendo overfitting. Infatti con l'aumento della complessità del modello, "$R^2$" nel sample, mal che vada rimane lo stesso perchè sto aggiungendo altri modi per spiegare  la variabile che voglio prevedere, quando però quando testiamo il modello su un insieme esterno, questo non è necessariamente vero perchè contemporaneamente sta aumentando la varianza.
+
+
+Poichè il nostro dataset è piuttosto piccolo per eseguire un test indipendente, la strategia della cross-validation può essere seguita. La tecnica consiste nel suddividere in un $K$ sottoinsiemi disgiunti i nostri dati, per ogni sottoinsime $k-esimo$ formulare il modello e calcolare il $MSE_k$ utilizzando i dati di partenza andando però ad escludere il sottoinsieme in questione, testare poi questo modello su quest'ultimo. In questo modo, ogni sottoinsieme svolge $K-1$ volte il ruolo di training set e esattamente una volta il ruolo di test set. Il MSE complessivo del modello è:
+$$CV(K) = \displaystyle \sum_{k=1}^{K} \frac{n_k}{n}MSE_k.$$
+Nel caso limite in cui $K=n$, utilizziamo l'approccio Leave-One-Out Cross Validation. Utilizzando quindi con $K=88$, calcoliamo l'errore di ogni osservazione per la previsione fatta andando ad escludere quel dato e poi facendo semplicemente la media.
+```{r loocv, options = options(digits=7)}
+sample.size = length(prevratings) #decido la dimensione del campione
+cv.errors = numeric(sample.size) #prealloco un vettore di zeri
+for (k in 1:sample.size){
+  fitCV=lm(rating~prevratings,data=CBC[-k,]) #tolgo un'osservazione
+  cv.errors[k]= ((rating-predict(fitCV,CBC))[k])^2 
+  #vado a prevedere solo per quell'osservazione
+}
+mean(cv.errors) #calcolo la media
+```
+Un metodo alternativo è quello di utilizzare la funzione "cv.glm" dove nel vettore Delta troviamo, nella prima posizione, lo stesso risultato precedente e nella seconda un termine che è leggermente migliorato perchè tiene conto dei possibili errori di approssimazione.
 ```{r summary_lm1_, options = options(digits=7)}
 library(boot)
-glm.fit=glm(rating~prevratings,data=CBC) #costruisco il modello GLM
+glm.fit=glm(rating~prevratings,data=CBC)
 cv.err=cv.glm(CBC,glm.fit) #passa la struttura dati e il modello
 names(cv.err)
 cv.err$K
-cv.err$delta[1]
+cv.err$delta
 ```
-Seguendo i ragionamenti fatti prima con un training set del 70%, possiamo eseguire il LOOCV su 5 modelli, ognuno dei quali con polinomi di grado massimo diverso.
+
 ```{r LOOCV}
-cv.error=rep(0,5)
-for (i in 1:5){
+#proviamo con polinomi con grado massimo diverso
+cv.error=rep(0,8) #numeric(8)
+j=1
+for (i in potenze){ #LOOCV su 8 modelli
   glm.fit=glm(rating~poly(prevratings,i),data=CBC)
-  cv.error[i]=cv.glm(CBC,glm.fit)$delta[1]
+  cv.error[j]=cv.glm(CBC,glm.fit)$delta[1]
+  j=j+1
 }
 cv.error
 ```
-Come abbiamo notato prima, anche eseguendo la LOOCV possiamo vedere che aumentando il grado massimo del polinomio l'errore non diminuisce, anzi aumenta all'aumentare del grado massimo. Per questo dobbiamo provare a prevedere il rating con l'utilizzo di un insieme variabili.
+
+Un metodo alternativo a quello di considerare un'osservazione alla volta nella Leave-One-Out Cross Validation, è la K-fold Cross Validation. In questo caso dividiamo l'intero dataset in 10 sottogruppi ed ogni volta utilizziamo un sottoinsieme diverso che svolge la funzione di test set. Questo metodo risulta computazionalmente più veloce perchè andiamo a confrontare meno osservazioni.
+
+```{r k-fold CV}
+set.seed(20)
+#divido in 10 gruppi che ovviamente non saranno della stessa cardinalità
+cv.error.10=rep(0,8)
+j=1
+for (i in potenze){
+  glm.fit=glm(rating~poly(prevratings,i),data=CBC)
+  cv.error.10[j]=cv.glm(CBC,glm.fit,K=10)$delta[1]
+  j=j+1
+}
+cv.error.10
+```
 
 <!--- train=sample(392,196) #indici del training set, quindi prendo un campione di 196 elementi (metà)
 #campionamento senza reinserimento
 #slip come voglio 50-50,70-30
-train #indici del training set
---->
-# Subset selection
+train #indici del training set --->
+Questi diversi esperimenti, probabilmente ci suggeriscono che utilizzare solo la variabile "Prevratings" potrebbe non essere sufficiente per prevedere il rating.
 Con la funzione `regsubsets` possiamo, in modo automatico, selezionare quelle variabili che sono le migliori per predire la variabile risposta, quando viene fissato il numero totale di variabili da utilizzare nel modello. Il termine migliore si riferisce alle prestazioni, guardando la RSS. Utilizziamo il dataset eliminando la colonna che contiene la media dei rating di programmi mandati in onda dalle reti concorrenti. Infatti, questo valore è molto difficile da prevedere e potrebbe essere rischioso includerlo nel modello in quanto potrebbe portare  a conclusioni sbagliate.
-```{r subset selection, options = options(warn = -1)}
+```{r subset selection}
 library(leaps)
-CBC$network=factor(CBC$network,levels = c("CBC","ABN","BBS"))
+CBC$network=as.factor(CBC$network)
 CBC$day=as.factor(CBC$day)
 CBC$month=as.factor(CBC$month)
 CBCr=CBC[, 1:7]
@@ -140,18 +179,19 @@ summary(regfit.full)
 reg.summary=summary(regfit.full)
 ```
 
-Osserviamo che, come ci potremmo aspettare, l'$R^2$ aumenta in maniera monotona all'aumentare delle variabili, ma questo non necessariamente ci fa concludere che il modello è migliore.
-```{r rsq, options = options(warn = 0)}
+Analizzando il risultato, osserviamo che quando fissiamo ad uno il numero di predittori, la variabile migliore che possiamo utilizzare è appunto "Prevratings", man mano che aumentiamo questo numero a questa si aggiungono tutte le altre, quando raggiungiamo il numero totale dei predittori che è uguale a 15. Infatti, notiamo che una volta che una variabile viene selezionata, questa rimane nell'insieme delle variabili migliori.
+
+```{r rsq}
 reg.summary$rsq
 ```
-
+Osserviamo che, come ci potremmo aspettare, l'$R^2$ aumenta in maniera monotona all'aumentare delle variabili, ma questo non necessariamente ci fa concludere che il modello in cui utilizziamo un maggior numero di variabili è il migliore.
 Per questo sarebbe opportuno considerare altri indici, al fine di capire qual è il giusto equilibrio tra numero di variabili e proporzione della variabilità spiegata. 
 
-Poichè stiamo confrontando modelli con un numero diverso di variabili, guardare solamente all'$R^2$, potrebbe non fornirci un'informazione utile o quanto meno un'informazione piuttosto distorta. A questo proposito sarebbe utile utilizzare altri indici come $R^2_{adj}$, il $C_p$ e il $BIC$:
+Poichè stiamo confrontando modelli con un numero diverso di variabili, guardare solamente l'$R^2$, potrebbe non fornirci un'informazione utile o quanto meno un'informazione piuttosto distorta. A questo proposito sarebbe utile utilizzare altri indici come $R^2_{adj}$, il $C_p$ e il $BIC$:
 
-* $R^2_{adj}$ è definito dal seguente rapporto dove $q$ rappresenta il numero di variabili ed $n$ il numero di osservazioni: $$R^2_{adj}=1- \displaystyle \frac{\displaystyle \frac{SSR}{(n-q-1)}}{ \displaystyle \frac{TSS}{(n-1)}}$$
+* $R^2_{adj}$ è definito dal seguente rapporto dove $q$ rappresenta il numero di variabili ed $n$ il numero di osservazioni: $$R^2_{adj}=1- \displaystyle \frac{\displaystyle \frac{SSR}{(n-q-1)}}{ \displaystyle \frac{TSS}{(n-1)}.}$$ Osserviamo che al crescere di $q$ il denominatore diminuisce e se non scende abbastazna velocemente anche il numeratore, il modello potrebbe essere peggiore quando quelle variabili stanno spiegando del rumore. Quindi mentre quando aggiungiamo delle variabili l'$R^2$ non può diminuire, può succedere per l'$R^2_{adj}$.
 
-* $C_p$, definendo $p=q+1$ e $\sigma^2$ come la stima dell'errore della varianza, il Mallow's $C_p$, si calcola come:
+* $C_p$, definendo $p=q+1$ il numero totale di coefficienti dato dalla somma del numero di variabili e la costante. Definiamo inoltre $\sigma^2$ la stima dell'errore della varianza e $n$ sempre il numero di osservazioni, il Mallow's $C_p$, si calcola come:
 $$C_p=\frac {1}{n}(SSR+2p\sigma^2)$$
 
 * $BIC$ (Bayesian Information Criterion) è definito da:
@@ -171,11 +211,10 @@ u=which.min(reg.summary$bic)
 plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
 points(u,reg.summary$bic[u],col="red",cex=2,pch=20)
 ```
-
 ```{r migliore sottoinsieme, validazione}
 # Choosing Among Models using the cross-validation approach
 set.seed(1)
-train=sample(c(TRUE,FALSE), nrow(CBCr),rep=TRUE)
+train=sample(c(TRUE,FALSE), nrow(CBC),rep=TRUE)
 test=(!train) #complemento
 regfit.best=regsubsets(rating~.,data=CBCr[train,],nvmax=15)
 test.mat=model.matrix(rating~.,data=CBCr[test,])
@@ -190,30 +229,21 @@ for(i in 1:12){
 val.errors
 which.min(val.errors)
 ```
-
 ```{r best_model}
-#coef(regfit.best,1)
-attributes(CBCr)
+coef(regfit.best,1)
 ```
-
 ```{r F/B Stepwise Selection}
 regfit.fwd=regsubsets(rating~.,data=CBCr,nvmax=15,method="forward")
 summary(regfit.fwd)
 regfit.bwd=regsubsets(rating~.,data=CBCr,nvmax=15,method="backward")
 summary(regfit.bwd)
 ```
-<!---
-```{r F/B Stepwise Selection interazioni}
-#rating~network*fact*stars*month*day*prevratings
-regfit.fwd=regsubsets(rating~network*fact*stars*month*day*prevratings,data=CBCr,nvmax=15,method="forward")
-summary(regfit.fwd)
-#regfit.bwd=regsubsets(rating~.,data=CBCr,nvmax=15,method="backward")
-#summary(regfit.bwd)
-```
---->
+
+
+
 ```{r F/B Cross Validation}
 k=10
-predict.regsubsets=function(object,newdata,id,...){
+ predict.regsubsets=function(object,newdata,id,...){
   form=as.formula(object$call[[2]])
   mat=model.matrix(form,newdata)
   coefi=coef(object,id=id)
@@ -221,13 +251,13 @@ predict.regsubsets=function(object,newdata,id,...){
   mat[,xvars]%*%coefi
 }
 set.seed(1)
-folds=sample(1:k,nrow(CBCr),replace=TRUE)
+folds=sample(1:k,nrow(CBC),replace=TRUE)
 cv.errors=matrix(NA,k,15, dimnames=list(NULL, paste(1:15)))
 for(j in 1:k){
   best.fit=regsubsets(rating~.,data=CBCr[folds!=j,],nvmax=15)
   for(i in 1:15){
     pred=predict(best.fit,CBCr[folds==j,],id=i)
-    cv.errors[j,i]=mean( (CBCr$rating[folds==j]-pred)^2)
+    cv.errors[j,i]=mean( (CBC$rating[folds==j]-pred)^2)
   }
 }
 mean.cv.errors=apply(cv.errors,2,mean)
@@ -235,60 +265,25 @@ mean.cv.errors
 min=which.min(mean.cv.errors)
 par(mfrow=c(1,1))
 plot(mean.cv.errors,type='b')
-reg.best=regsubsets(rating~.,data=CBCr, nvmax=15)
+reg.best=regsubsets(rating~.,data=CBC, nvmax=15)
 ```
 
-<!---
-```{r F/B Cross Validation interazioni}
-k=10
-num_var_max=38
-predict.regsubsets=function(object,newdata,id,...){
-  form=as.formula(object$call[[2]])
-  mat=model.matrix(form,newdata)
-  coefi=coef(object,id=id)
-  xvars=names(coefi)
-  mat[,xvars]%*%coefi
-}
-set.seed(1)
-folds=sample(1:k,nrow(CBCr),replace=TRUE)
-cv.errors=matrix(NA,k,num_var_max, dimnames=list(NULL, paste(1:num_var_max)))
-for(j in 1:k){
-  best.fit=regsubsets(rating~network+fact+stars*month*day*prevratings,data=CBCr[folds!=j,],nvmax=num_var_max,method="forward")
-  for(i in 1:num_var_max){
-    pred=predict(best.fit,CBCr[folds==j,],id=i)
-    cv.errors[j,i]=mean( (CBCr$rating[folds==j]-pred)^2)
-  }
-}
-cv.errors
-mean.cv.errors=apply(cv.errors,2,mean)
-mean.cv.errors
-min=which.min(mean.cv.errors)
-par(mfrow=c(1,1))
-plot(mean.cv.errors,type='b')
-reg.best=regsubsets(rating~network+fact+stars*month*day*prevratings,data=CBCr, nvmax=num_var_max, method="forward")
-```
---->
-
-<!---
-```{r best model_cross validation, options = options(max.print = 20000)}
-summary(reg.best)
+```{r best model_cross validation}
 coef(reg.best,min)
-#coef(reg.best,30)
 ```
---->
 
-# Regressione Ridge e Lasso 
-```{r regression, options = options(warn = -1), options = options(max.print = 1000)}
+## Regressione Ridge e Lasso 
+```{r regression}
 library(glmnet)
-#CBC = read.csv(file = "02 - Dati per caso Colonial Broadcasting.csv", header=T)
-x=model.matrix(rating~.,CBC)[,-1] #tolgo l'intercetta
+CBC = read.csv(file = "02 - Dati per caso Colonial Broadcasting.csv", header=T)
+x=model.matrix(rating~.,CBCr)[,-1] #tolgo l'intercetta
 #perchè Beta_0 non va penalizzato
 y=CBC$rating
 grid=10^seq(10,-2,length=100)
 ```
 
 La funzione `glmnet` implementa sia i due casi estremi di regressione ridge e lasso, sia regressioni intermedie a seconda del valore di $\alpha$ che fissiamo.
-```{r ridge, options = options(warn = 0)}
+```{r ridge}
 ridge.mod=glmnet(x,y,alpha=0,lambda=grid)
 dim(coef(ridge.mod))
 ```
@@ -311,7 +306,7 @@ mean((ridge.pred-y.test)^2)
 #dopo che ho capito che questo è il modello migliore, vado a
 #prevederlo con tutti i dati
 out=glmnet(x,y,alpha=0)
-predict(out,type="coefficients",s=bestlam)[1:17,]
+predict(out,type="coefficients",s=bestlam)[1:16,]
 ```
 
 ```{r lasso}
@@ -324,7 +319,7 @@ bestlam
 lasso.pred=predict(lasso.mod,s=bestlam,newx=x[test,])
 mean((lasso.pred-y.test)^2)
 out=glmnet(x,y,alpha=1,lambda=grid)
-lasso.coef=predict(out,type="coefficients",s=bestlam)[1:17,]
+lasso.coef=predict(out,type="coefficients",s=bestlam)[1:16,]
 lasso.coef
 ```
 
