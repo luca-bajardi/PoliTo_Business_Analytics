@@ -1,0 +1,39 @@
+---
+title: "Pilgrim Bank"
+author: "Francesca Collini"
+date: "31/07/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r read}
+rm(list =ls())
+Pilgrim = read.csv(file = "PilgrimABC.csv", header=T)
+attach(Pilgrim)
+```
+
+Osserviamo che il nostro dataset contiene 31634 osservazioni e 11 variabili (le ultime due non sono interessanti ai fini della nostra analisi). I dati sono relativi a due anni, 1999 e 2000, per ciascuno abbiamo a disposizione un'informazione relativa al profitto (o alla perdita) di un determinato cliente in quell'anno e un'informazione che ci dice se quel cliente in quell'anno ha utilizzato l'opzione di online banking oppure no: la variabile Online quindi è una variabile binaria. Abbiamo poi a dispozione altre informazioni relative al cliente:
+
+*AGE: variabile categorica che indica a che fascia  di età appartiene il cliente(1 = less than 15 years; 2 = 15-24 years; 3 = 25-34 years; 4 = 35-44 years; 5 = 45-54 years; 6 = 55-64 years; 7 = 65 years and older.)
+
+* INCOME: variabile categorica che indica il range del reddito di ciascun cliente (1 = less than $\$15,000; 2 = \$15,000-\$19,999; 3 = \$20,000-\$29,999; 4 = \$30,000-\$39,999; 5 = \$40,000- \$49,999; 6 = \$50,000-\$74,999; 7 = \$75,000-\$99,999; 8 = \$100,000-\$124,999; 9 = \$125,000$ and more.)
+
+* TENURE:
+
+* DISTRICT: variabile categorica che indica uno delle tre regioni geografiche in cui si trova il cliente.
+```{r esplorazione}
+dim(Pilgrim)
+names(Pilgrim[, 1:9])
+```
+```{r dataset}
+head(Pilgrim)
+```
+```{r na}
+sum(is.na(Pilgrim$X0Profit))
+```
+```{r detach}
+detach(Pilgrim)
+```
