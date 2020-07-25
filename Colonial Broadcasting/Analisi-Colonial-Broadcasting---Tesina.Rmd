@@ -35,9 +35,13 @@ Utilizzando questi valori vorremo prevedere il valore di rating del film che sti
 
 Vediamo inoltre che non ci sono elementi NA (Not Available), quindi possiamo usare tutte le osservazioni nel dataset:
 ```{r na}
-sum(is.na(CBC$rating))
+sum(is.na(rating))
 ```
-
+Possiamo anche osservare la distribuzione dei rating dei diversi film ed osservare il valore medio.
+```{r hist}
+hist(rating)
+mean(rating)
+```
 Abbiamo a disposizione un dataset piccolo, che contiene solamente 88 osservazioni che vorremmo utilizzare sia per formulare il nostro modello di previsione (training set), sia per testarlo per capire quanto sono accurate le nostre previsioni. Per questo motivo, scegliamo arbitrariamente di considerare come test set il 30% del dataset totale e come training la parte rimanente.
 
 ```{r train}
