@@ -1,6 +1,6 @@
 ---
 title: "Pilgrim Bank"
-author: "Francesca Collini"
+author: "Luca Bajardi e Francesca Collini"
 date: "31/07/2020"
 output: html_document
 ---
