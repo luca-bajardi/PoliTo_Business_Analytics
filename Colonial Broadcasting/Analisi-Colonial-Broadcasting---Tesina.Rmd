@@ -405,8 +405,8 @@ lasso.coef
 ```
 
 ```{r confronto}
-plot(lasso.mod)
 plot(ridge.mod)
+plot(lasso.mod)
 ```
 
 # Conclusioni
