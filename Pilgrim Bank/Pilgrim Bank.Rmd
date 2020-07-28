@@ -19,18 +19,18 @@ attach(Pilgrim)
 
 Osserviamo che il nostro dataset contiene 31634 osservazioni e 11 variabili (le ultime due non sono interessanti ai fini della nostra analisi). I dati sono relativi a due anni, 1999 e 2000, per ciascuno abbiamo a disposizione un'informazione relativa al profitto (o alla perdita) di un determinato cliente in quell'anno e un'informazione che ci dice se quel cliente in quell'anno ha utilizzato l'opzione di online banking oppure no: la variabile Online quindi è una variabile binaria. Abbiamo poi a dispozione altre informazioni relative al cliente:
 
-* AGE: variabile categorica che indica a che fascia  di età appartiene il cliente(1 = less than 15 years; 2 = 15-24 years; 3 = 25-34 years; 4 = 35-44 years; 5 = 45-54 years; 6 = 55-64 years; 7 = 65 years and older.)
+* AGE: variabile categorica che indica a che fascia  di età appartiene il cliente (1 = less than 15 years; 2 = 15-24 years; 3 = 25-34 years; 4 = 35-44 years; 5 = 45-54 years; 6 = 55-64 years; 7 = 65 years and older.)
 
 * INCOME: variabile categorica che indica il range del reddito di ciascun cliente (1 = less than $\$15,000; 2 = \$15,000-\$19,999; 3 = \$20,000-\$29,999; 4 = \$30,000-\$39,999; 5 = \$40,000- \$49,999; 6 = \$50,000-\$74,999; 7 = \$75,000-\$99,999; 8 = \$100,000-\$124,999; 9 = \$125,000$ and more.)
 
-* TENURE:
+* TENURE: rappresenta l'età di servizio
 
 * DISTRICT: variabile categorica che indica uno delle tre regioni geografiche in cui si trova il cliente.
 ```{r esplorazione}
 dim(Pilgrim)
 names(Pilgrim[, 1:9])
 ```
-Rinomico colonne per evitare problemi con i nomi
+Rinominiamo le colonne per evitare problemi con i nomi:
 ```{r rinomino_colonne}
 Profit=Pilgrim$X9Profit
 Online=Pilgrim$X9Online
@@ -43,17 +43,22 @@ District=Pilgrim$X9District
 ```{r dataset}
 head(Pilgrim)
 ```
-Dall'istogramma sul profitto nel 1999 possiamo notare che c'è un discreto numero di clienti che mi fanno perdere e che l'istogramma è molto scodato.
+
+Dal summary del profitto possiamo facilmente osservare che la distribuzione è molto asimmetrica perchè media e mediana sono molto diverse tra loro. Inoltre notiamo che tutto il primo quartile è negativo.
+```{r summary profit}
+summary(Profit)
+```
+Dall'istogramma sul profitto nel 1999 possiamo notare che c'è un discreto numero di clienti che mi fa perdere e che l'istogramma è molto scodato a destra quindi ci sono pochissimi clienti che mi fanno guadagnare molto.
 ```{r hist profit}
 hist(Profit)
 ```
-Possiamo notare che ci sono 16832 persone che generano profitto sulle 31634 presenti nel dataset.
+Possiamo notare che ci sono 16832 clienti che generano profitto sulle 31634 presenti nel dataset.
 ```{r profitable}
 N=length(Profit)
 Nprofitable = sum(Profit>0)
 cat('profitable = ', Nprofitable, ' out of ', N, '\n')
 ```
-Tramite la curva di Pareto possiamo notare che poche persone fanno guadagnare tanto, mentre la maggior parte delle persone fa guadagnare poco o addirittura fa perdere guadagno.
+Tramite la curva di Pareto possiamo confermare che poche persone fanno guadagnare tanto, mentre la maggior parte delle persone fa guadagnare poco o addirittura fa perdere guadagno.
 ```{r Pareto curve}
 cumprofit=cumsum(sort(Profit,decreasing=TRUE))*100/sum(Profit)
 plot(100*(1:N)/N,cumprofit,type='l')
@@ -68,19 +73,20 @@ cat('average profit ON', mean(ProfitOnline), '\n')
 ProfitOffline = Profit[Online==0]
 cat('average profit OFF', mean(ProfitOffline), '\n')
 ```
-\textcolor{red}{Analizziamo l'intervallo di confidenza per vedere se i dati sono sufficienti o no, se intervallo grande avrei bisogno di più clienti}
+Quello che vorremmo capire è se questa differenza è stocasticamente significativa, quindi se davvero coloro che utilizzano i servizi online mi permettono di guadagnare di più. Per questo motivo possiamo eseguire un `t.test` sulle due popolazioni, i clienti che utilizzano il servizio online e coloro che non lo usano, e vado a vedere quanto vale il p-value. L'ipotesi nulla in questo caso è che le medie siano uguali e che quindi la differenza tra le medie delle due popolazioni non sia significativa.
+\textcolor{red}{Analizziamo inoltre l'intervallo di confidenza per vedere se i dati sono sufficienti o no. Infatti se intervallo fosse troppo grande vorrebbe dire che avrei bisogno di più clienti per formulare una teoria generale.}
 ```{r int.conf}
 cat('Conf int profit ', t.test(Profit)$conf.int, '\n')
 cat('p-value difference ',t.test(ProfitOnline,ProfitOffline)$p.value, '\n')
 ```
-Eseguo il `t.test` su due popolazioni e vado a vedere il p-value, il p-value è maggiore di 0.05 e quindi vedo che non c'è una differenza significativa, quindi non rifiuto l'ipotesi nulla sulla differenza tra le medie.
+Risulta esserci una differenza di circa 6 dollari tra le due popolazioni, quindi non risulta più di tanto significtiva dal lato business, ma anche il p-value è maggiore di 0.05 e quindi possiamo concludere che questa differenza non è significativa nemmeno dal punto di vista statistico, e quindi non rifiutiamo l'ipotesi nulla sulla differenza tra le medie.
 
-Posso ottenere lo stesso risultato facendo:
+Possiamo ottenere lo stesso risultato impostando il modello di regressione classico:
 ```{r lm_online}
 mod = lm(Profit ~ Online)
 summary(mod)
 ```
-Infatti posso osservare che il valore dell'intercetta è la media del profitto di quelli che operano offline e il valore aggiunto di quelli che operano online è di 6 dollari come la differenza tra la media di quelli che operano online e la media di quelli che operano offline. Anche qua il p-value è superiore a 0.05 come il precedenza. Questo significa che non è significativa perhcé metto insieme clienti molto diversi tra loro, per questo controllo l'età.
+Dal summary del modello, possiamo osservare che il valore dell'intercetta è la media del profitto tra coloro che operano offline e il valore aggiunto di quelli che operano online è di quasi 6 dollari come la differenza tra la media di quelli che operano online e la media di quelli che operano offline. Anche in questo caso però, il p-value è superiore a 0.05 come in precedenza. Questo significa che la variabile Online non è significativa. Tuttavia, questo potrebbe essere dovuto al fatto che stiamo mettendo insieme clienti molto diversi tra loro e quindi considerando un unico modello non riusciamo a distinguere bene i singoli effetti. Per questo introduciamo l'età nel modello di regressione.
 
 La variabile `Age` è riconosciuta numerica anche se in realtà è categorica. Nell'analisi dovremo trasformarla in `factor` perché altrimenti vi è troppa influenza dell'ordinamento delle variabili categoriali.
 
@@ -88,102 +94,111 @@ La variabile `Age` è riconosciuta numerica anche se in realtà è categorica. N
 Age1 = as.factor(Age)
 summary(Age1)
 ```
-Possiamo notare che ci sono 8289 osservazioni in cui non è presente l'età, infatti nel `summary` sottostante possiamo notare che nonostante ci siano 32 mila osservazioni ci sono solo 23 mila gradi di libertà in quanto quelle con i missing values sono eliminate.
+Possiamo notare che ci sono 8289 osservazioni in cui non è presente l'età, infatti nel `summary` sottostante possiamo notare che nonostante ci siano 32 mila osservazioni ci sono solo 23 mila gradi di libertà in quanto quelle con i missing values sono eliminate automaticamente.
 ```{r lm_onlineAge1}
 mod = lm(Profit ~ Online+Age1)
 summary(mod)
 ```
-Ora sulle fasce d'età vi è una significatività sia statistica che di business, infatti le diverse età potrebbero implicare diversi redditi, un giovane usa di più l'online banking ma ha un reddito minore quindi fa guadagnare di meno.
+Ora sulle fasce d'età vi è una significatività sia statistica che di business, infatti le diverse età potrebbero implicare diversi redditi, in linea generale un giovane tende ad usare di più l'online banking ma ha un reddito minore e quindi fa guadagnare di meno.
 
 Posso notare che a prescindere dall'utilizzo dell'online o dell'offline i giovani sono meno profittevoli degli anziani:
 ```{r check profitability}
 lapply(split(Profit,as.factor(Age)),mean) 
 ```
-Il 20% dei giovani usa l'online, questa percentuale scende per le fasce di età successive fino ad arrivare quasi allo 0.
+Inoltre il $20\%$ dei giovani usa l'online, questa percentuale scende per le fasce di età successive fino ad arrivare a poco più del $3\%$.
 ```{r lm_onlineAge3}
 lapply(split(Online,as.factor(Age)),mean)
 ```
 
-Ci potrebbe essere un bias dovuto ai dati mancanti
+Ci potrebbe essere un bias dovuto ai dati mancanti. Infatti ci sono molte osservazioni in cui non abbiamo l'informazione sull'età. Non sappiamo perchè questi dati sono mancanti, anche se è difficile pensare che sia semplicemente dovuto a delle dimenticanze o sviste in fase di racconta dei dati, forse avrebbe più senso pensare ai conti cointestati oppure al fatto che il conto venga intestato ad una società. 
 ```{r lm_onlineAgeGiven}
+sum(is.na(Age))
 AgeGiven = ifelse(is.na(Age),0,1) # 0 dove c'è NA, 1 se c'è l'età
 mod = lm(Profit ~ AgeGiven)
 summary(mod)
 ```
-C'è una differenza statisticamente significativa sul profitto tra dove c'è l'età e dove non c'è, quindi eliminando i dati dove manca l'età sto distorgendo l'analisi, infatti c'è una profittabilità media più alta tra chi mi ha dato l'età rispetto a chi non me l'ha data.
+C'è una differenza statisticamente significativa sul profitto tra  le osservazioni in cui è presente l'informazione sull'età e dove non c'è. La variabile `AgeGiven` infatti risulta significativa, la distribuzione tra le due popolazioni di conseguenza non risulta omogenea. Quindi, eliminando i dati dove manca l'età, stiamo distorcendo l'analisi, perchè queste medie sono "sporcate". Infatti c'è una profittabilità media più alta tra chi mi ha dato l'età rispetto a chi non me l'ha data.
 
 \textcolor{red}{LUCA SI è FERMATO QUA}
+ Possiamo provare diversi metodi per cercare di recuperare quelle osservazioni dove l'età non è presente, in modo da includerle comunque nell'analisi. Se avessimo delle righe complete ed alcune con un solo campo mancante, potremmo costruire un modello di regressione in modo da prevedere qeul valore. Una possibile alternativa, più immediata, è quella di sostituire i valori mancanti con i valori nulli. Questa strada sembra abbastanza convincente, quando l'età è una variabile categorica e possiamo quindi scegliere un valore arbitrario. Quando invece la variabile è numerica non ha molto senso, perchè equivale a dire che coloro che non hanno fornito l'età, risultano neonati.
 ```{r lm_onlineAge4}
-
-#Data Imputation = cerco di riempire i missing
-#potremmo creare un modello di regressione per trovare i valori mancanti
-
-# Replace missing with Zero
 AgeZero = ifelse(is.na(Age),0,Age) 
-#dove c'è NA metto 0, ma essendo ordinali non ha senso, sembra che chi non dato l'età è un neonato
 table(AgeZero)
+```
+```{r lm_AgeZero}
 mod = lm(Profit ~ Online+AgeZero)
 summary(mod)
-#ci è venuto questo valore di online perché ho scelto arbitrariamente di mettere 0
-
+```
+I valori dei coefficienti sono dovuti al fatto che in modo arbitrario abbiamo scelto di sostituire i valori  mancanti con il valore nullo.
 # Replace missing with mean
-mm = mean(Age, na.rm=TRUE)
-#na.rm=TRUE mi fa la media senza considerare i NA, 
-# anche se non ha molto senso perché è discretizzato, ma rimane comunque ordinato
+Una possibile alternativa è quella di sostituire i valori mancanti con la media dell'età calcolata sui valori presenti.
+```{r lm_AgeZero}
+mm = mean(Age, na.rm=TRUE)#non consideriamo i valori mancanti
 AgeAverage = ifelse(is.na(Age),mm,Age)
 table(AgeAverage)
+```
+```{r lm_AgeAverage}
 mod = lm(Profit ~ Online+AgeAverage)
 summary(mod)
-#cambia il coefficiente di Online quindi a seconda di come tappo il buco esce un risultato diverso 
-# quindi non è così che dobbiamo procedere
+```
 
-# control for AgeGiven
+Ovviamente osserviamo che i valori dei coefficienti cambiano, ed in aprticolare cambia il contributo della variabile Online, quindi a seconda di come tappo il buco, di come scelgo di inserire i valori mancanti nel modello, otteniamo un risultato diverso. Questo ci suggerisce che probabilmente, non è questa la strada giusta per procedere.
+
+```{r lm_AgeZero+Given}
 mod = lm(Profit ~ Online+AgeZero+AgeGiven)
 summary(mod)
-#Online è venuto 19
-#questo è un modo per considerare AgeZero come categorico
+```
 
+Per tentare di evitare questo problema potremmo  considerare i modelli ottenuti tenendo conto sia della variabile Age opportunamente modificata, sia del fatto che la variabile Age venga fornita oppure no. Questo ci permette di considerare una variabile categorica che indica la presenza o meno dell'informazione sull'età, quindi non importa più di tanto come vado a rimepire il buco dell'informazione mancante.
+```{r lm_AgeAverage+Given}
 mod = lm(Profit ~ Online+AgeAverage+AgeGiven)
 summary(mod)
-#Online viene 19 come prima
-#ho tappato il buco in modo arbitrario per poter fare la regressione, 
-# ma poi la considero come categorica
-#R^2 è miserevole quindi il modello spiega il 2.5% della variabilità
+```
+Osserviamo che in entrambi i casi, tutte le variabili risultano significative perchè il p-value corrispondente è sufficientemente piccolo. Inoltre il valore della variabile Online è lo stesso del caso precedente anche se abbiamo scelto di tappare i buchi scegliendo dei valori arbitrari. Tuttavia il valore dell'$R^2$ risulta essere molto molto piccolo, quindi questo modello povero arriva a spiegare circa il $2.5\%$ della variabilità. 
 
-# Deal with missing income
-#faccio lo stesso ragionamento di prima
+Per cercare un modello più valido, possiamo considerare un'altra variabile, ad esempio il reddito di ciascun cliente. Anche in questo caso possiamo scegliere come includere i valori NA, scegliamo ad esempio i valori nulli.
+```{r lm_IncomeZero}
 IncomeZero = ifelse(is.na(Income),0,Income)
 IncomeGiven = ifelse(is.na(Income),0,1)
 mod = lm(Profit ~ Online+AgeAverage+AgeGiven+IncomeZero+IncomeGiven)
 summary(mod)
-#Online scende un po', R^2 è cresciuto, è raddoppiato ma rimane sempre piccolo
+```
+Possiamo notare, che il valore della variabile Online scende un po'e che  l'$R^2$ è quasi raddoppiato, ma rimane comunque piccolo.
 
+Notiamo che non ci sono valori mancanti nella variabile District, tuttavia viene considerata numerica, quindi vorremmo trasformarla in categorica, in modo che ogni valore venga associato ad uno dei tre distretti. Quello che possiamo fare è introdurre due variabili binarie che rappresentano i distretti. Notiamo inoltre che non ci sono valori mancanti neanche nella variabile Tenure.
+```{r district}
 # Control for Tenure and district
 any(is.na(District))
-table(District) #ha tre valori e nessun NA, ma sono considerati numerici
-# quindi devo creare varibili categoriche
-any(is.na(Tenure))
+table(District) 
 District1100 = ifelse(District==1100,1,0)
 District1200 = ifelse(District==1200,1,0)
+any(is.na(Tenure))
+```
+Andando ad effettuare la regressione con tutte queste variabili, notiamo che l'$R^2$ (e anche l'$R_{adj}^2$) sta aumentando anche se sempre di poco, mentre il contributo della variabile Online adesso vale circa 13.
+```{r regressione completa}
 mod = lm(Profit ~ Online+AgeAverage+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
 summary(mod)
-
-#qualcosa di R^2 lo grattiamo ma poco
-#Online è circa 13
+```
 
 #potremmo considerare Age come categorico
-#potremmo considerare il rapporto tra Online e Age
-
-#un valore di soglia dell'R^2 non c'è, dipende se migliora la mia prestazione economica
+```{r AgeCat}
+AgeCat = ifelse(is.na(Age)==TRUE,0,Age)
+Age1=as.factor(AgeCat)
+levels(Age1)
 ```
-
 ```{r lm_onlineAge5}
-
+mod = lm(Profit ~ Online+Age1+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
+summary(mod)
 ```
-
+#potremmo considerare il rapporto tra Online e Age
 ```{r lm_onlineAge6}
 
 ```
+
+
+
+
+
 
 ```{r lm_onlineAge7}
 
@@ -197,9 +212,127 @@ summary(mod)
 
 ```
 
-```{r na}
-sum(is.na(Pilgrim$X0Profit))
+```{r lm_Age}
+
 ```
+
+
+# PARTE B
+In conclusione, i modelli trovati sono poco utili nella previsione del profitto. Possiamo provare a migliorare la situazione, utilizzando la storia della banca, e quindi anche le informazioni passate dei clienti.
+```{r parte b}
+#Andiamo a rinominare le variabili
+Profit9=X9Profit 
+Online9=X9Online
+Profit0=X0Profit
+Online0=X0Online
+```
+
+## Modello base
+Proviamo a prevedere il profitto di ciascun cliente nel 2000, andando ad utilizzare l'informazione binaria rigaurdo all'uso dell'online banking. L'$R^2$ è troppo basso, quindi vorremmo migliorare questo modello.
+```{r mod1}
+mod1 = lm(Profit0 ~ Online9)
+summary(mod1)
+```
+
+Per provare a far aumentare il valore dell'$R^2$, possiamo utilizzare le informazioni a nostra disposizione sull'anno precedente, quelle che abbiamo utilizzato nei modelli precedenti.
+
+```{r mod2}
+mod2 = lm(Profit0 ~ Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
+summary(mod2)
+```
+Questo migliora abbastanza le prestazioni, perchè così riusciamo a spiegare molta più della variabilità presente. Inoltre, abbiamo un'ulteriore informazione sui singoli clienti: il profitto nel 1999. Inserendo questa informazione nel modello è come se dicessimo che il profitto nell'anno successivo dipende dal profitto dell'anno in corso e dalle caratteristiche del singolo cliente. Quindi in linea di principio, coloro che l'anno precdente mi hanno fatto guadagnare, continueranno a farmi guadagnare anche nell'anno successivo. 
+```{r mod3}
+mod3 = lm(Profit0 ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
+summary(mod3)
+```
+Adesso l'$R^2$ risulta notevolmente migliorato: riusciamo a spiegare oltre il $36\%$ della variabilità.
+
+Possiamo anche supporre che i dati anagrafici non siano rilevanti, ma magari non li abbiamo utilizzati nel modo giusto nel modello. Infatti provando a tenere la variabile del profitto precedente come regressore, ma eliminando le variabili `Age` e `Income`, otteniamo un modello che spiega all'incirca la stessa variabilità.
+
+```{r mod4}
+mod4 = lm(Profit0 ~ Profit9+Online9+Tenure+District1100+District1200)
+summary(mod4)
+```
+
+## Profitto nel tempo
+
+Quello che possiamo osservare è come le due variabili legate al profitto del singolo cliente nei diversi anni, siano correlate tra loro. Osserviamo infatti che c'è una correlazione di circa il $60\%$. Sono presenti inoltre solamente 8 osservazioni in cui il profitto nel 2000 risulta essere maggiore di 5000, quindi possiamo pensare che quelle osservazioni siano degli outliers.
+```{r profit}
+plot(Profit9,Profit0)
+cor(Profit9,Profit0,use="complete.obs")
+sum(Profit0>5000,na.rm=TRUE)
+```
+Quello che possiamo fare è andare ad osservare il valore dell'$R^2$ nel caso in cui questi valori vengano eliminati, per capire se il modello risulta migliore.
+```{r outliers}
+c=which(Profit0>5000)
+detach(Pilgrim)
+data=Pilgrim[-c,]
+attach(data)
+Profit9=X9Profit
+Online9=X9Online
+Age=X9Age
+Income=X9Inc
+Tenure=X9Tenure
+District=X9District
+Profit0=X0Profit
+Online0=X0Online
+District1100 = ifelse(District==1100,1,0)
+District1200 = ifelse(District==1200,1,0)
+AgeGiven = ifelse(is.na(Age),0,1)
+AgeZero = ifelse(is.na(Age),0,Age)
+IncomeZero = ifelse(is.na(Income),0,Income)
+IncomeGiven = ifelse(is.na(Income),0,1)
+mod3 = lm(Profit0 ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data)
+summary(mod3)
+mod4 = lm(Profit0 ~ Profit9+Online9+Tenure+District1100+District1200)
+summary(mod4)
+```
+Osserviamo che abbiamo un numero diverso di valori mancanti 
+```{r na}
+sum(is.na(Online0))
+sum(is.na(Profit0))
+which(is.na(Profit0) != is.na(Online0))
+which(is.na(Profit0) < is.na(Online0))
+which(is.na(Profit0) > is.na(Online0))
+```
+#--- ADD retain variable
+Retain = ifelse(is.na(Profit0),0,1)
+mod1 = lm(Retain ~ Online9)
+summary(mod1)
+mod2 = lm(Retain ~ Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
+summary(mod2)
+mod3 = lm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
+summary(mod3)
+hist(mod3$fitted,nclass=50)
+
+#--- PART 3 - ANALYZE retention with Logistic regression
+glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+  IncomeGiven+Tenure+District1100+District1200,family=binomial(logit))
+summary(glm.out)
+#molto veloce,i coefficienti sono piccolini, ma vanno dentro l'esponenziale
+#le diasgnostiche sono un po' diverse, ma non cambia il senso generale
+hist(glm.out$fitted.values,nclass=50)
+#continuiamo ad avere le due mode molto distanti e 
+#dei casi un po' dubbi nel mezzo
+plot(mod3$fitted, glm.out$fitted, xlab="Predicted OLS", ylab="Predicted logit")
+#le prestazioni sono davvero meglio?
+plot(profit9, profit0) #buttare fuori le anomalie
+#--- PART 4 - Demographics vs. Past profit to analyze profitability 
+mod1 = lm(Profit0 ~ 
+  Profit9+Online9+Tenure+District1100+District1200+factor(Age)+factor(Income))
+summary(mod1)
+mod2 = lm(Profit0 ~ Profit9+Online9+Tenure)
+summary(mod2)
+mod3 = lm(Profit0 ~ District1100+District1200+factor(Age)+factor(Income))
+summary(mod3)
+
+dtab=subset(dtab, subset=X0Profit<= -30000)
+#ci sono altre informazioni che ci dicono quanto è profittevole un cliente
+#due cose che assolutamente vanno fatte
+#eliminare gli otliers
+#introdurre un elemento di serie temporali
+```
+
 ```{r detach}
 detach(Pilgrim)
 ```
