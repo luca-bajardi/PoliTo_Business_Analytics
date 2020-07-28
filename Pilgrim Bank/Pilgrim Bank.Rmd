@@ -132,7 +132,7 @@ summary(mod)
 I valori dei coefficienti sono dovuti al fatto che in modo arbitrario abbiamo scelto di sostituire i valori  mancanti con il valore nullo.
 # Replace missing with mean
 Una possibile alternativa è quella di sostituire i valori mancanti con la media dell'età calcolata sui valori presenti.
-```{r lm_AgeZero}
+```{r AgeAverage}
 mm = mean(Age, na.rm=TRUE)#non consideriamo i valori mancanti
 AgeAverage = ifelse(is.na(Age),mm,Age)
 table(AgeAverage)
@@ -234,7 +234,7 @@ mod1 = lm(Profit0 ~ Online9)
 summary(mod1)
 ```
 
-Per provare a far aumentare il valore dell'$R^2$, possiamo utilizzare le informazioni a nostra disposizione sull'anno precedente, quelle che abbiamo utilizzato nei modelli precedenti.
+Per provare a far aumentare il valore dell'$R^2$, possiamo utilizzare le informazioni anagrafiche a nostra disposizione relative al singolo cliente, quelle che abbiamo utilizzato nei modelli precedenti.
 
 ```{r mod2}
 mod2 = lm(Profit0 ~ Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
@@ -268,26 +268,30 @@ c=which(Profit0>5000)
 detach(Pilgrim)
 data=Pilgrim[-c,]
 attach(data)
-Profit9=X9Profit
-Online9=X9Online
-Age=X9Age
-Income=X9Inc
-Tenure=X9Tenure
-District=X9District
-Profit0=X0Profit
-Online0=X0Online
-District1100 = ifelse(District==1100,1,0)
-District1200 = ifelse(District==1200,1,0)
-AgeGiven = ifelse(is.na(Age),0,1)
-AgeZero = ifelse(is.na(Age),0,Age)
-IncomeZero = ifelse(is.na(Income),0,Income)
-IncomeGiven = ifelse(is.na(Income),0,1)
-mod3 = lm(Profit0 ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data)
+Out_Profit9=X9Profit
+Out_Online9=X9Online
+Out_Age=X9Age
+Out_Income=X9Inc
+Out_Tenure=X9Tenure
+Out_District=X9District
+Out_Profit0=X0Profit
+Out_Online0=X0Online
+Out_District1100 = ifelse(Out_District==1100,1,0)
+Out_District1200 = ifelse(Out_District==1200,1,0)
+Out_AgeGiven = ifelse(is.na(Out_Age),0,1)
+Out_AgeZero = ifelse(is.na(Out_Age),0,Out_Age)
+Out_IncomeZero = ifelse(is.na(Out_Income),0,Out_Income)
+Out_IncomeGiven = ifelse(is.na(Out_Income),0,1)
+mod3 = lm(Out_Profit0 ~ Out_Profit9+Out_Online9+Out_AgeZero+Out_AgeGiven+Out_IncomeZero+Out_IncomeGiven+Out_Tenure+Out_District1100+Out_District1200)
 summary(mod3)
-mod4 = lm(Profit0 ~ Profit9+Online9+Tenure+District1100+District1200)
+mod4 = lm(Out_Profit0 ~ Out_Profit9+Out_Online9+Out_Tenure+Out_District1100+Out_District1200)
 summary(mod4)
+detach(data)
+attach(Pilgrim)
 ```
-Osserviamo che abbiamo un numero diverso di valori mancanti 
+Quindi andando a ripetere il codice precedente, quando però eliminiamo gli outliers, miglioriamo l'$R^2$ che negli ultimi due modelli raggiunge circa il $50\%$. 
+
+Osserviamo inoltre che abbiamo un numero diverso di valori mancanti: ci sono 5219 osservazioni in cui non abbiamo l'informazione sulla online banking nel 2000 e 5238 osservazioni in cui non abbiamo l'informazione sul profitto nel 2000, questo vuol dire che il cliente non è rimasto nella banca nell'anno successivo. Quindi logicamente, non ci sono osservazioni in cui abbiamo l'informazione di Profit0 ma non di Online0. Ci sono invece 19 osservazioni in cui al contrario abbiamo l'informazione sul profitto, ma non sappiamo se il cliente ha utilizzato la banca online.
 ```{r na}
 sum(is.na(Online0))
 sum(is.na(Profit0))
@@ -295,7 +299,9 @@ which(is.na(Profit0) != is.na(Online0))
 which(is.na(Profit0) < is.na(Online0))
 which(is.na(Profit0) > is.na(Online0))
 ```
-#--- ADD retain variable
+### ADD retain variable
+Quello che possiamo fare è aggiungere una variabile aggiuntiva `Retain` che ci dice se il cliente rimane nella banca anche nell'anno successivo. A questo punto vorremmo capire come prevedere al meglio se un cliente rimane con la banca nell'anno successivo oppure no, questo potrebbe dipendere da tutte le caratteristiche del cliente.
+```{r retain}
 Retain = ifelse(is.na(Profit0),0,1)
 mod1 = lm(Retain ~ Online9)
 summary(mod1)
@@ -303,34 +309,63 @@ mod2 = lm(Retain ~ Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+Distri
 summary(mod2)
 mod3 = lm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
 summary(mod3)
-hist(mod3$fitted,nclass=50)
+hist(mod3$fitted,nclass=50, main ="Histogrm of mod3")
+```
+Andare a considerare il valore dell'$R^2$ per valtutare la bontà del modello non è molto opportuno perchè stiamo prevedendo se il cliente rimane oppure no, quindi è una variabile binaria. Dall'istogramma possiamo facilmente dedurre ci sono due gruppi abbastanza distinti, quindi quello che possiamo fare è fissare una certa soglia al di sopra della quale possiamo concludere che il cliente è sicuro, mentre al di sotto si trovano quei clienti che probabilmente il prossimo anno cambieranno la banca. Infatti ci sono due mode molto alte e sufficientemente lontane, mentre tra i valori di 0.7 e 0.8, troviamo una "zona grigia", dove la moda è molto bassa e i clienti sono abbastanza incerti. Inoltre saremmo interessati ad interpretare i valori dell'istogramma come delle probabilità, anche se ci sono dei valori più grandi di 1. In questo modo sarei in grado di capire sotto quale valore dovrei preoccuparmi del cliente.
 
 #--- PART 3 - ANALYZE retention with Logistic regression
+Proviamo a prevedere il comportamento futuro di un cliente, utilizzando la regressione logistica.
+```{r logistic}
 glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
   IncomeGiven+Tenure+District1100+District1200,family=binomial(logit))
 summary(glm.out)
-#molto veloce,i coefficienti sono piccolini, ma vanno dentro l'esponenziale
-#le diasgnostiche sono un po' diverse, ma non cambia il senso generale
-hist(glm.out$fitted.values,nclass=50)
-#continuiamo ad avere le due mode molto distanti e 
-#dei casi un po' dubbi nel mezzo
+hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
+```
+Questo metodo risulta molto veloce,in quanto si ferma dopo solo 5 iterazioni. Inoltre le diasgnostiche del modello sono un po' diverse, notiamo che non abbiamo più a disposizione l'$R^2$,ma non cambia il senso generale, come osserviamo dall'istogramma.
+```{r confronto}
 plot(mod3$fitted, glm.out$fitted, xlab="Predicted OLS", ylab="Predicted logit")
-#le prestazioni sono davvero meglio?
-plot(profit9, profit0) #buttare fuori le anomalie
-#--- PART 4 - Demographics vs. Past profit to analyze profitability 
+```
+# Regressione logistica andando ad eliminare gli outliers
+```{r logistic no out}
+glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+  IncomeGiven+Tenure+District1100+District1200,family=binomial(logit))
+summary(glm.out)
+hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
+```
+#--- PART 4 - Demographics vs. Past profit to analyze profitability
+Possiamo considerare le variabili `Age` e `Income` effettivamente come categoriche.
+```{r completo categorico}
 mod1 = lm(Profit0 ~ 
   Profit9+Online9+Tenure+District1100+District1200+factor(Age)+factor(Income))
 summary(mod1)
+```
+
+```{r no Age ne Income}
 mod2 = lm(Profit0 ~ Profit9+Online9+Tenure)
 summary(mod2)
+```
+
+```{r categorico+district}
 mod3 = lm(Profit0 ~ District1100+District1200+factor(Age)+factor(Income))
 summary(mod3)
+```
 
-dtab=subset(dtab, subset=X0Profit<= -30000)
-#ci sono altre informazioni che ci dicono quanto è profittevole un cliente
-#due cose che assolutamente vanno fatte
-#eliminare gli otliers
-#introdurre un elemento di serie temporali
+
+```{r Profit0}
+summary(Profit0)
+plot(Profit0)
+m=which(Profit0<=-5000)
+M=which(Profit0>=5000)
+d=Pilgrim[-m,]
+dtab=d[-M, ]
+summary(dtab)
+```
+
+```{r logistic}
+glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+  IncomeGiven+Tenure+District1100+District1200,family=binomial(logit))
+summary(glm.out)
+hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
 ```
 
 ```{r detach}
