@@ -13,6 +13,7 @@ knitr::opts_chunk$set(echo = TRUE)
 Carichiamo i dati leggendo il file csv e settiamo il seme del generatore pseudo-casuale così da avere i risultati sempre uguali.
 ```{r read}
 rm(list =ls())
+set.seed(1)
 Pilgrim = read.csv(file = "PilgrimABC.csv", header=T)
 attach(Pilgrim)
 ```
@@ -361,11 +362,66 @@ dtab=d[-M, ]
 summary(dtab)
 ```
 
-```{r logistic}
+```{r logistic2}
 glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
   IncomeGiven+Tenure+District1100+District1200,family=binomial(logit))
 summary(glm.out)
 hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
+```
+
+```{r decision tree}
+library(tree)
+h.tree<-tree(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+  IncomeGiven+Tenure+District1100+District1200)
+summary(h.tree)
+```
+
+```{r decision tree2}
+plot(h.tree,lwd=3)
+text(h.tree,pretty=0,cex=1.2,col="blue")
+h.tree
+setup<-tree.control(length(Retain), mincut = 2, minsize = 6, mindev = 0.0005)
+h.tree<-tree(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+  IncomeGiven+Tenure+District1100+District1200,control=setup)
+summary(h.tree)
+plot(h.tree,lwd=3)
+text(h.tree,pretty=0,cex=1.2,col="blue")
+```
+
+```{r decision tree cv}
+cv.hitters =cv.tree(h.tree)# ,FUN=prune.tree )
+cv.hitters
+plot(cv.hitters$size,cv.hitters$dev,type="b", lwd=3,col="blue",
+xlab="Nodi terminali", ylab="RSS",main="Cost complexity pruning" )
+```
+
+```{r decision tree predict}
+prune.hitters=prune.tree(h.tree, best =10)
+plot(prune.hitters,lwd=3)
+text(prune.hitters ,pretty =0,cex=1.2,col="blue")
+P1<-predict(prune.hitters)
+P1<-data.frame(P1) ## semplicemente per osservare meglio
+## cosa abbiamo nell'oggetto P1
+head(P1)
+```
+
+```{r decision tree balanced}
+library(rpart)
+library(ROSE)
+Retain = as.factor(Retain)
+data_balanced_over <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, method = "over",N = 52792)$data
+setup<-tree.control(52792, mincut = 2, minsize = 6, mindev = 0.00003)
+h.tree.balanced<-rpart(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data_balanced_over, control=setup)
+summary(h.tree.balanced)
+plot(h.tree.balanced,lwd=3)
+text(h.tree.balanced,pretty=0,cex=1.2,col="blue")
+pred.treebal <- predict(h.tree.balanced, newdata = data_balanced_over)
+
+
+#summary(as.factor(Retain))
+#data_balanced_over <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+#  IncomeGiven+Tenure+District1100+District1200, method = "over",N = 5000)$data
+#table(data_balanced_over$Retain)
 ```
 
 ```{r detach}
