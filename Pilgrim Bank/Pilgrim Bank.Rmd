@@ -362,12 +362,6 @@ dtab=d[-M, ]
 summary(dtab)
 ```
 
-```{r logistic2}
-glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
-  IncomeGiven+Tenure+District1100+District1200,family=binomial(logit))
-summary(glm.out)
-hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
-```
 
 # ```{r decision tree}
 # library(tree)
@@ -441,11 +435,13 @@ summary(tree.Pilgrim)
 ```{r decisiontree predict}
 set.seed(1)
 train = sample(1:nrow(data_balanced_over), nrow(data_balanced_over)*0.7)
+df.train=data_balanced_over[train,]
 df.test = data_balanced_over[-train,]
+target.train = data_balanced_over[train,]$Retain
 target.test = df.test$Retain
 setup<-tree.control(52792-length(target.test),mincut = 2, minsize = 6, mindev = 0.001)
 tree.Pilgrim = tree(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data_balanced_over, control = setup, subset = train)
-tree.pred = predict(tree.Pilgrim, df.test, type="class")
+tree.pred = predict(tree.Pilgrim, df.test, type="class", probability=TRUE)
 #table.res = table(tree.pred,target.test)
 #table.res
 #accuracy = (table.res[1,1]+table.res[2,2])/sum(table.res)
@@ -453,14 +449,63 @@ tree.pred = predict(tree.Pilgrim, df.test, type="class")
 library(caret)
 cf = confusionMatrix(data = tree.pred, reference = target.test, mode = "prec_recall")
 cf
-#precision <- posPredValue(tree.pred,target.test, positive="1")
-#recall <- sensitivity(tree.pred,target.test, positive="1")
+precision <- posPredValue(tree.pred,target.test, positive="1")
+recall <- sensitivity(tree.pred,target.test, positive="1")
 
 #F1 <- (2 * precision * recall) / (precision + recall)
 #precision
 #recall
 #F1
 #summary(tree.Pilgrim)
+```
+# Logistic Regression
+```{r logistic2}
+glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+  IncomeGiven+Tenure+District1100+District1200,family=binomial(logit), data=df.train)
+summary(glm.out)
+hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
+pred=predict(glm.out, df.test, type = "response")
+logit.pred = rep(0, dim(df.test)[1])
+logit.pred[pred > .5] = 1
+logit.pred=as.factor(logit.pred)
+cf = confusionMatrix(data = logit.pred, reference = target.test, mode = "prec_recall")
+cf
+precision <- posPredValue(logit.pred,target.test, positive="1")
+recall <- sensitivity(logit.pred,target.test, positive="1")
+specificity=specificity(logit.pred,target.test, positive="1")
+cat('Specificity:',specificity, '\n')
+```
+
+# KNN
+```{r knn tuning}
+set.seed(1)
+train.control=trainControl(method="repeatedcv", number=10, repeats=3)
+#fit=train(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200,
+#          method="knn",
+#         tuneGrid=expand.grid(k=2:20), 
+#          trControl=train.control, 
+#          metric="Kappa",
+#          data=df.train)
+#fit
+```
+```{r knn}
+library(class)
+knn_pred <- knn(df.train,df.test,cl=target.train,k=2)
+cf = confusionMatrix(data = pr, reference = target.test, mode = "prec_recall")
+cf
+precision <- posPredValue(pr,target.test, positive="1")
+recall <- sensitivity(pr,target.test, positive="1")
+specificity=specificity(pr,target.test, positive="1")
+cat('Specificity:',specificity, '\n')
+```
+```{r roc, message=FALSE}
+library(pROC)
+p=predict(tree.Pilgrim, df.train)
+treeROC = roc(target.test,factor(tree.pred, ordered = TRUE), plot=TRUE, print.auc=TRUE, col="blue")
+logit_roc=plot.roc(target.test,factor(logit.pred, ordered = TRUE), add=TRUE, col="green", print.auc=TRUE, print.auc.y=0.3)
+knn_roc = plot.roc(target.test,factor(knn_pred, ordered = TRUE), add=TRUE, col="red", print.auc=TRUE, print.auc.y=0.7, print.auc.x=0.2)
+
+#legend("bottomright", legend = c("Logistic Regression", "Decision Tree", "KNN"), col=c("green", "blue", "red"))
 ```
 
 ```{r detach}
