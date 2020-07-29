@@ -120,8 +120,7 @@ summary(mod)
 ```
 C'è una differenza statisticamente significativa sul profitto tra  le osservazioni in cui è presente l'informazione sull'età e dove non c'è. La variabile `AgeGiven` infatti risulta significativa, la distribuzione tra le due popolazioni di conseguenza non risulta omogenea. Quindi, eliminando i dati dove manca l'età, stiamo distorcendo l'analisi, perchè queste medie sono "sporcate". Infatti c'è una profittabilità media più alta tra chi mi ha dato l'età rispetto a chi non me l'ha data.
 
-\textcolor{red}{LUCA SI è FERMATO QUA}
- Possiamo provare diversi metodi per cercare di recuperare quelle osservazioni dove l'età non è presente, in modo da includerle comunque nell'analisi. Se avessimo delle righe complete ed alcune con un solo campo mancante, potremmo costruire un modello di regressione in modo da prevedere qeul valore. Una possibile alternativa, più immediata, è quella di sostituire i valori mancanti con i valori nulli. Questa strada sembra abbastanza convincente, quando l'età è una variabile categorica e possiamo quindi scegliere un valore arbitrario. Quando invece la variabile è numerica non ha molto senso, perchè equivale a dire che coloro che non hanno fornito l'età, risultano neonati.
+Possiamo provare diversi metodi per cercare di recuperare quelle osservazioni dove l'età non è presente, in modo da includerle comunque nell'analisi. Se avessimo delle righe complete ed alcune con un solo campo mancante, potremmo costruire un modello di regressione in modo da prevedere qeul valore. Una possibile alternativa, più immediata, è quella di sostituire i valori mancanti con i valori nulli. Questa strada sembra abbastanza convincente, quando l'età è una variabile categorica e possiamo quindi scegliere un valore arbitrario. Quando invece la variabile è numerica non ha molto senso, perchè equivale a dire che coloro che non hanno fornito l'età, risultano neonati.
 ```{r lm_onlineAge4}
 AgeZero = ifelse(is.na(Age),0,Age) 
 table(AgeZero)
@@ -131,7 +130,8 @@ mod = lm(Profit ~ Online+AgeZero)
 summary(mod)
 ```
 I valori dei coefficienti sono dovuti al fatto che in modo arbitrario abbiamo scelto di sostituire i valori  mancanti con il valore nullo.
-# Replace missing with mean
+
+### Replace missing with mean
 Una possibile alternativa è quella di sostituire i valori mancanti con la media dell'età calcolata sui valori presenti.
 ```{r AgeAverage}
 mm = mean(Age, na.rm=TRUE)#non consideriamo i valori mancanti
@@ -192,31 +192,6 @@ mod = lm(Profit ~ Online+Age1+IncomeZero+IncomeGiven+Tenure+District1100+Distric
 summary(mod)
 ```
 #potremmo considerare il rapporto tra Online e Age
-```{r lm_onlineAge6}
-
-```
-
-
-
-
-
-
-```{r lm_onlineAge7}
-
-```
-
-```{r lm_onlineAge8}
-
-```
-
-```{r lm_onlineAge9}
-
-```
-
-```{r lm_Age}
-
-```
-
 
 # PARTE B
 In conclusione, i modelli trovati sono poco utili nella previsione del profitto. Possiamo provare a migliorare la situazione, utilizzando la storia della banca, e quindi anche le informazioni passate dei clienti.
@@ -257,40 +232,39 @@ summary(mod4)
 
 ## Profitto nel tempo
 
-Quello che possiamo osservare è come le due variabili legate al profitto del singolo cliente nei diversi anni, siano correlate tra loro. Osserviamo infatti che c'è una correlazione di circa il $60\%$. Sono presenti inoltre solamente 8 osservazioni in cui il profitto nel 2000 risulta essere maggiore di 5000, quindi possiamo pensare che quelle osservazioni siano degli outliers.
+Quello che possiamo osservare è come le due variabili legate al profitto del singolo cliente nei diversi anni, siano correlate tra loro. Osserviamo infatti che c'è una correlazione di circa il $60\%$. Sono presenti inoltre solamente 8 osservazioni in cui il profitto nel 2000 risulta essere maggiore di 5000 e una osservazione con profitto nel 2000 minore di -5000, quindi possiamo pensare che quelle osservazioni siano degli outliers.
 ```{r profit}
 plot(Profit9,Profit0)
 cor(Profit9,Profit0,use="complete.obs")
 sum(Profit0>5000,na.rm=TRUE)
+sum(Profit0<(-5000),na.rm=TRUE)
 ```
 Quello che possiamo fare è andare ad osservare il valore dell'$R^2$ nel caso in cui questi valori vengano eliminati, per capire se il modello risulta migliore.
 ```{r outliers}
-c=which(Profit0>5000)
+c=which(abs(Profit0)>5000)
 detach(Pilgrim)
 data=Pilgrim[-c,]
 attach(data)
-Out_Profit9=X9Profit
-Out_Online9=X9Online
-Out_Age=X9Age
-Out_Income=X9Inc
-Out_Tenure=X9Tenure
-Out_District=X9District
-Out_Profit0=X0Profit
-Out_Online0=X0Online
-Out_District1100 = ifelse(Out_District==1100,1,0)
-Out_District1200 = ifelse(Out_District==1200,1,0)
-Out_AgeGiven = ifelse(is.na(Out_Age),0,1)
-Out_AgeZero = ifelse(is.na(Out_Age),0,Out_Age)
-Out_IncomeZero = ifelse(is.na(Out_Income),0,Out_Income)
-Out_IncomeGiven = ifelse(is.na(Out_Income),0,1)
-mod3 = lm(Out_Profit0 ~ Out_Profit9+Out_Online9+Out_AgeZero+Out_AgeGiven+Out_IncomeZero+Out_IncomeGiven+Out_Tenure+Out_District1100+Out_District1200)
+Profit9=X9Profit
+Online9=X9Online
+Age=X9Age
+Income=X9Inc
+Tenure=X9Tenure
+District=X9District
+Profit0=X0Profit
+Online0=X0Online
+District1100 = ifelse(District==1100,1,0)
+District1200 = ifelse(District==1200,1,0)
+AgeGiven = ifelse(is.na(Age),0,1)
+AgeZero = ifelse(is.na(Age),0,Age)
+IncomeZero = ifelse(is.na(Income),0,Income)
+IncomeGiven = ifelse(is.na(Income),0,1)
+mod3 = lm(Profit0 ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
 summary(mod3)
-mod4 = lm(Out_Profit0 ~ Out_Profit9+Out_Online9+Out_Tenure+Out_District1100+Out_District1200)
+mod4 = lm(Profit0 ~ Profit9+Online9+Tenure+District1100+District1200)
 summary(mod4)
-detach(data)
-attach(Pilgrim)
 ```
-Quindi andando a ripetere il codice precedente, quando però eliminiamo gli outliers, miglioriamo l'$R^2$ che negli ultimi due modelli raggiunge circa il $50\%$. 
+Quindi andando a ripetere il codice precedente, quando però eliminiamo gli outliers, miglioriamo l'$R^2$ che negli ultimi due modelli raggiunge circa il $50\%$. Per questo motivo nelle successive analisi considereremo il dataset senza outliers.
 
 Osserviamo inoltre che abbiamo un numero diverso di valori mancanti: ci sono 5219 osservazioni in cui non abbiamo l'informazione sulla online banking nel 2000 e 5238 osservazioni in cui non abbiamo l'informazione sul profitto nel 2000, questo vuol dire che il cliente non è rimasto nella banca nell'anno successivo. Quindi logicamente, non ci sono osservazioni in cui abbiamo l'informazione di Profit0 ma non di Online0. Ci sono invece 19 osservazioni in cui al contrario abbiamo l'informazione sul profitto, ma non sappiamo se il cliente ha utilizzato la banca online.
 ```{r na}
@@ -310,7 +284,7 @@ mod2 = lm(Retain ~ Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+Distri
 summary(mod2)
 mod3 = lm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
 summary(mod3)
-hist(mod3$fitted,nclass=50, main ="Histogrm of mod3")
+hist(mod3$fitted,nclass=50, main ="Histogram of mod3")
 ```
 Andare a considerare il valore dell'$R^2$ per valtutare la bontà del modello non è molto opportuno perchè stiamo prevedendo se il cliente rimane oppure no, quindi è una variabile binaria. Dall'istogramma possiamo facilmente dedurre ci sono due gruppi abbastanza distinti, quindi quello che possiamo fare è fissare una certa soglia al di sopra della quale possiamo concludere che il cliente è sicuro, mentre al di sotto si trovano quei clienti che probabilmente il prossimo anno cambieranno la banca. Infatti ci sono due mode molto alte e sufficientemente lontane, mentre tra i valori di 0.7 e 0.8, troviamo una "zona grigia", dove la moda è molto bassa e i clienti sono abbastanza incerti. Inoltre saremmo interessati ad interpretare i valori dell'istogramma come delle probabilità, anche se ci sono dei valori più grandi di 1. In questo modo sarei in grado di capire sotto quale valore dovrei preoccuparmi del cliente.
 
@@ -322,7 +296,7 @@ glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
 summary(glm.out)
 hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
 ```
-Questo metodo risulta molto veloce,in quanto si ferma dopo solo 5 iterazioni. Inoltre le diasgnostiche del modello sono un po' diverse, notiamo che non abbiamo più a disposizione l'$R^2$,ma non cambia il senso generale, come osserviamo dall'istogramma.
+Questo metodo risulta molto veloce,in quanto si ferma dopo solo 5 iterazioni. Inoltre le diagnostiche del modello sono un po' diverse, notiamo che non abbiamo più a disposizione l'$R^2$,ma non cambia il senso generale, come osserviamo dall'istogramma.
 ```{r confronto}
 plot(mod3$fitted, glm.out$fitted, xlab="Predicted OLS", ylab="Predicted logit")
 ```
@@ -333,6 +307,93 @@ glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
 summary(glm.out)
 hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
 ```
+
+# Bilanciamento dataset
+```{r bilanciamento dati1}
+Retain = as.factor(Retain)
+summary(Retain)
+```
+Possiamo notare che i dati sono sbilanciati, quindi dobbiamo andare a bilanciare i dati mediante un oversampling:
+```{r bilanciamento dati2,warning=FALSE}
+library(ROSE)
+dim_data_balanced = max(sum(Retain==1),sum(Retain==0))*2
+data_balanced_over <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, method = "over",N = dim_data_balanced)$data
+```
+
+Per analizzare meglio i vari algoritmi di classificazione dividiamo in due parti il dataset bilanciato, una parte per il training e una parte per la validazione del modello.
+```{r split,warning=TRUE}
+set.seed(1)
+train = sample(1:nrow(data_balanced_over), nrow(data_balanced_over)*0.7)
+df.train = data_balanced_over[train,]
+df.test  = data_balanced_over[-train,]
+target.train = df.train$Retain
+target.test  = df.test$Retain
+```
+
+## Decision Tree
+
+```{r decision tree}
+library(tree)
+setup<-tree.control(nrow(df.train),mincut = 2, minsize = 6, mindev = 0.001)
+tree.Pilgrim = tree(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=df.train, control = setup)
+tree.pred = predict(tree.Pilgrim, df.test, type="class", probability=TRUE)
+library(caret)
+cf = confusionMatrix(data = tree.pred, reference = target.test, mode = "prec_recall")
+cf
+```
+
+## Logistic Regression
+```{r logistic2, warning=FALSE}
+glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+  IncomeGiven+Tenure+District1100+District1200,family=binomial(logit), data=df.train)
+summary(glm.out)
+hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
+pred=predict(glm.out, df.test, type="response")
+logit.pred = rep(0, dim(df.test)[1])
+logit.pred[pred > .5] = 1
+logit.pred=factor(logit.pred,labels=c("1","0"))
+cf = confusionMatrix(data = logit.pred, reference = target.test, mode = "prec_recall", positive="1")
+cf
+specificity=specificity(logit.pred,target.test, positive="1")
+cat('Specificity:',specificity, '\n')
+```
+
+# KNN
+```{r knn tuning, warning=TRUE}
+set.seed(1)
+train.control=trainControl(method="repeatedcv", number=3, repeats=1)
+fit=train(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200,
+          method="knn",
+          tuneGrid=expand.grid(k=c(4,8,10,15)), 
+          trControl=train.control, 
+          metric="Accuracy",
+          data=df.train)
+fit
+```
+
+```{r knn}
+library(class)
+knn_pred <- knn(df.train,df.test,cl=target.train,k=4)
+cf = confusionMatrix(data = knn_pred, reference = target.test, mode = "prec_recall")
+cf
+specificity=specificity(knn_pred,target.test, positive="1")
+cat('Specificity:',specificity, '\n')
+```
+
+# Confronto tra modelli
+```{r roc, message=FALSE,warning=FALSE}
+library(pROC)
+treeROC = roc(target.test,factor(tree.pred, ordered = TRUE), plot=TRUE, print.auc=TRUE, col="blue")
+logit_roc=plot.roc(target.test,factor(logit.pred, ordered = TRUE), add=TRUE, col="green", print.auc=TRUE, print.auc.y=0.3)
+knn_roc = plot.roc(target.test,factor(knn_pred, ordered = TRUE), add=TRUE, col="red", print.auc=TRUE, print.auc.y=0.7, print.auc.x=0.2)
+
+legend("bottomright", legend = c("Logistic Regression", "Decision Tree", "KNN"), col=c("green", "blue", "red"))
+```
+```{r roc2, message=TRUE,warning=TRUE}
+
+```
+
+
 #--- PART 4 - Demographics vs. Past profit to analyze profitability
 Possiamo considerare le variabili `Age` e `Income` effettivamente come categoriche.
 ```{r completo categorico}
@@ -362,151 +423,6 @@ dtab=d[-M, ]
 summary(dtab)
 ```
 
-
-# ```{r decision tree}
-# library(tree)
-# h.tree<-tree(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
-#   IncomeGiven+Tenure+District1100+District1200)
-# summary(h.tree)
-# ```
-
-# ```{r decision tree2}
-# plot(h.tree,lwd=3)
-# text(h.tree,pretty=0,cex=1.2,col="blue")
-# h.tree
-# setup<-tree.control(length(Retain), mincut = 2, minsize = 6, mindev = 0.0005)
-# h.tree<-tree(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
-#   IncomeGiven+Tenure+District1100+District1200,control=setup)
-# summary(h.tree)
-# plot(h.tree,lwd=3)
-# text(h.tree,pretty=0,cex=1.2,col="blue")
-# ```
-
-# ```{r decision tree cv}
-# cv.hitters =cv.tree(h.tree)# ,FUN=prune.tree )
-# cv.hitters
-# plot(cv.hitters$size,cv.hitters$dev,type="b", lwd=3,col="blue",
-# xlab="Nodi terminali", ylab="RSS",main="Cost complexity pruning" )
-# ```
-
-# ```{r decision tree predict}
-# prune.hitters=prune.tree(h.tree, best =10)
-# plot(prune.hitters,lwd=3)
-# text(prune.hitters ,pretty =0,cex=1.2,col="blue")
-# P1<-predict(prune.hitters)
-# P1<-data.frame(P1) ## semplicemente per osservare meglio
-# ## cosa abbiamo nell'oggetto P1
-# head(P1)
-# ```
-
-# ```{r decision tree balanced}
-# library(rpart)
-# library(ROSE)
-# Retain = as.factor(Retain)
-# data_balanced_over <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, method = "over",N = 52792)$data
-# setup<-tree.control(52792, mincut = 2, minsize = 6, mindev = 0.00003)
-# h.tree.balanced<-rpart(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data_balanced_over, control=setup)
-# summary(h.tree.balanced)
-# plot(h.tree.balanced,lwd=3)
-# text(h.tree.balanced,pretty=0,cex=1.2,col="blue")
-# pred.treebal <- predict(h.tree.balanced, newdata = data_balanced_over)
-# 
-# 
-# #summary(as.factor(Retain))
-# #data_balanced_over <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
-# #  IncomeGiven+Tenure+District1100+District1200, method = "over",N = 5000)$data
-# #table(data_balanced_over$Retain)
-# ```
-
-Bilanciamento dataset
-```{r bilanciamento dati}
-library(ROSE)
-Retain = as.factor(Retain)
-data_balanced_over <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, method = "over",N = 52792)$data
-```
-
-```{r decisiontree}
-library(tree)
-setup<-tree.control(52792, mincut = 2, minsize = 6, mindev = 0.001)
-tree.Pilgrim = tree(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data_balanced_over, control = setup)
-summary(tree.Pilgrim)
-```
-
-```{r decisiontree predict}
-set.seed(1)
-train = sample(1:nrow(data_balanced_over), nrow(data_balanced_over)*0.7)
-df.train=data_balanced_over[train,]
-df.test = data_balanced_over[-train,]
-target.train = data_balanced_over[train,]$Retain
-target.test = df.test$Retain
-setup<-tree.control(52792-length(target.test),mincut = 2, minsize = 6, mindev = 0.001)
-tree.Pilgrim = tree(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data_balanced_over, control = setup, subset = train)
-tree.pred = predict(tree.Pilgrim, df.test, type="class", probability=TRUE)
-#table.res = table(tree.pred,target.test)
-#table.res
-#accuracy = (table.res[1,1]+table.res[2,2])/sum(table.res)
-#accuracy
-library(caret)
-cf = confusionMatrix(data = tree.pred, reference = target.test, mode = "prec_recall")
-cf
-precision <- posPredValue(tree.pred,target.test, positive="1")
-recall <- sensitivity(tree.pred,target.test, positive="1")
-
-#F1 <- (2 * precision * recall) / (precision + recall)
-#precision
-#recall
-#F1
-#summary(tree.Pilgrim)
-```
-# Logistic Regression
-```{r logistic2, warning=FALSE}
-glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
-  IncomeGiven+Tenure+District1100+District1200,family=binomial(logit), data=df.train)
-summary(glm.out)
-hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
-pred=predict(glm.out, df.test, type="response")
-logit.pred = rep(0, dim(df.test)[1])
-logit.pred[pred > .5] = 1
-logit.pred=factor(logit.pred,labels=c("1","0"))
-cf = confusionMatrix(data = logit.pred, reference = target.test, mode = "prec_recall", positive="1")
-cf
-precision <- posPredValue(logit.pred,target.test, positive="1")
-recall <- sensitivity(logit.pred,target.test, positive="1")
-specificity=specificity(logit.pred,target.test, positive="1")
-cat('Specificity:',specificity, '\n')
-```
-
-# KNN
-```{r knn tuning, warning=TRUE}
-set.seed(1)
-train.control=trainControl(method="repeatedcv", number=3, repeats=1)
-fit=train(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200,
-          method="knn",
-          tuneGrid=expand.grid(k=c(4,8,10,15)), 
-          trControl=train.control, 
-          metric="Accuracy",
-          data=df.train)
-fit
-```
-```{r knn}
-library(class)
-knn_pred <- knn(df.train,df.test,cl=target.train,k=2)
-cf = confusionMatrix(data = knn_pred, reference = target.test, mode = "prec_recall")
-cf
-precision <- posPredValue(knn_pred,target.test, positive="1")
-recall <- sensitivity(knn_pred,target.test, positive="1")
-specificity=specificity(knn_pred,target.test, positive="1")
-cat('Specificity:',specificity, '\n')
-```
-```{r roc, message=FALSE}
-library(pROC)
-treeROC = roc(target.test,factor(tree.pred, ordered = TRUE), plot=TRUE, print.auc=TRUE, col="blue")
-logit_roc=plot.roc(target.test,factor(logit.pred, ordered = TRUE), add=TRUE, col="green", print.auc=TRUE, print.auc.y=0.3)
-knn_roc = plot.roc(target.test,factor(knn_pred, ordered = TRUE), add=TRUE, col="red", print.auc=TRUE, print.auc.y=0.7, print.auc.x=0.2)
-
-legend("bottomright", legend = c("Logistic Regression", "Decision Tree", "KNN"), col=c("green", "blue", "red"))
-```
-
 ```{r detach}
-detach(Pilgrim)
+#detach(Pilgrim)
 ```
