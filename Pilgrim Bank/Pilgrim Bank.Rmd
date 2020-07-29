@@ -369,59 +369,98 @@ summary(glm.out)
 hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
 ```
 
-```{r decision tree}
-library(tree)
-h.tree<-tree(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
-  IncomeGiven+Tenure+District1100+District1200)
-summary(h.tree)
-```
+# ```{r decision tree}
+# library(tree)
+# h.tree<-tree(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+#   IncomeGiven+Tenure+District1100+District1200)
+# summary(h.tree)
+# ```
 
-```{r decision tree2}
-plot(h.tree,lwd=3)
-text(h.tree,pretty=0,cex=1.2,col="blue")
-h.tree
-setup<-tree.control(length(Retain), mincut = 2, minsize = 6, mindev = 0.0005)
-h.tree<-tree(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
-  IncomeGiven+Tenure+District1100+District1200,control=setup)
-summary(h.tree)
-plot(h.tree,lwd=3)
-text(h.tree,pretty=0,cex=1.2,col="blue")
-```
+# ```{r decision tree2}
+# plot(h.tree,lwd=3)
+# text(h.tree,pretty=0,cex=1.2,col="blue")
+# h.tree
+# setup<-tree.control(length(Retain), mincut = 2, minsize = 6, mindev = 0.0005)
+# h.tree<-tree(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+#   IncomeGiven+Tenure+District1100+District1200,control=setup)
+# summary(h.tree)
+# plot(h.tree,lwd=3)
+# text(h.tree,pretty=0,cex=1.2,col="blue")
+# ```
 
-```{r decision tree cv}
-cv.hitters =cv.tree(h.tree)# ,FUN=prune.tree )
-cv.hitters
-plot(cv.hitters$size,cv.hitters$dev,type="b", lwd=3,col="blue",
-xlab="Nodi terminali", ylab="RSS",main="Cost complexity pruning" )
-```
+# ```{r decision tree cv}
+# cv.hitters =cv.tree(h.tree)# ,FUN=prune.tree )
+# cv.hitters
+# plot(cv.hitters$size,cv.hitters$dev,type="b", lwd=3,col="blue",
+# xlab="Nodi terminali", ylab="RSS",main="Cost complexity pruning" )
+# ```
 
-```{r decision tree predict}
-prune.hitters=prune.tree(h.tree, best =10)
-plot(prune.hitters,lwd=3)
-text(prune.hitters ,pretty =0,cex=1.2,col="blue")
-P1<-predict(prune.hitters)
-P1<-data.frame(P1) ## semplicemente per osservare meglio
-## cosa abbiamo nell'oggetto P1
-head(P1)
-```
+# ```{r decision tree predict}
+# prune.hitters=prune.tree(h.tree, best =10)
+# plot(prune.hitters,lwd=3)
+# text(prune.hitters ,pretty =0,cex=1.2,col="blue")
+# P1<-predict(prune.hitters)
+# P1<-data.frame(P1) ## semplicemente per osservare meglio
+# ## cosa abbiamo nell'oggetto P1
+# head(P1)
+# ```
 
-```{r decision tree balanced}
-library(rpart)
+# ```{r decision tree balanced}
+# library(rpart)
+# library(ROSE)
+# Retain = as.factor(Retain)
+# data_balanced_over <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, method = "over",N = 52792)$data
+# setup<-tree.control(52792, mincut = 2, minsize = 6, mindev = 0.00003)
+# h.tree.balanced<-rpart(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data_balanced_over, control=setup)
+# summary(h.tree.balanced)
+# plot(h.tree.balanced,lwd=3)
+# text(h.tree.balanced,pretty=0,cex=1.2,col="blue")
+# pred.treebal <- predict(h.tree.balanced, newdata = data_balanced_over)
+# 
+# 
+# #summary(as.factor(Retain))
+# #data_balanced_over <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
+# #  IncomeGiven+Tenure+District1100+District1200, method = "over",N = 5000)$data
+# #table(data_balanced_over$Retain)
+# ```
+
+Bilanciamento dataset
+```{r bilanciamento dati}
 library(ROSE)
 Retain = as.factor(Retain)
 data_balanced_over <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, method = "over",N = 52792)$data
-setup<-tree.control(52792, mincut = 2, minsize = 6, mindev = 0.00003)
-h.tree.balanced<-rpart(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data_balanced_over, control=setup)
-summary(h.tree.balanced)
-plot(h.tree.balanced,lwd=3)
-text(h.tree.balanced,pretty=0,cex=1.2,col="blue")
-pred.treebal <- predict(h.tree.balanced, newdata = data_balanced_over)
+```
 
+```{r decisiontree}
+library(tree)
+setup<-tree.control(52792, mincut = 2, minsize = 6, mindev = 0.001)
+tree.Pilgrim = tree(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data_balanced_over, control = setup)
+summary(tree.Pilgrim)
+```
 
-#summary(as.factor(Retain))
-#data_balanced_over <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
-#  IncomeGiven+Tenure+District1100+District1200, method = "over",N = 5000)$data
-#table(data_balanced_over$Retain)
+```{r decisiontree predict}
+set.seed(1)
+train = sample(1:nrow(data_balanced_over), nrow(data_balanced_over)*0.7)
+df.test = data_balanced_over[-train,]
+target.test = df.test$Retain
+setup<-tree.control(52792-length(target.test),mincut = 2, minsize = 6, mindev = 0.001)
+tree.Pilgrim = tree(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure+District1100+District1200, data=data_balanced_over, control = setup, subset = train)
+tree.pred = predict(tree.Pilgrim, df.test, type="class")
+#table.res = table(tree.pred,target.test)
+#table.res
+#accuracy = (table.res[1,1]+table.res[2,2])/sum(table.res)
+#accuracy
+library(caret)
+cf = confusionMatrix(data = tree.pred, reference = target.test, mode = "prec_recall")
+cf
+#precision <- posPredValue(tree.pred,target.test, positive="1")
+#recall <- sensitivity(tree.pred,target.test, positive="1")
+
+#F1 <- (2 * precision * recall) / (precision + recall)
+#precision
+#recall
+#F1
+#summary(tree.Pilgrim)
 ```
 
 ```{r detach}
