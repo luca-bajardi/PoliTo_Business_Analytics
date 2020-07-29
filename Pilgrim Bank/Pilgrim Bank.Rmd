@@ -6,7 +6,7 @@ output:
   pdf_document: default
   word_document: default
 ---
-
+ 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -240,7 +240,7 @@ sum(Profit0>5000,na.rm=TRUE)
 sum(Profit0<(-5000),na.rm=TRUE)
 ```
 Quello che possiamo fare è andare ad osservare il valore dell'$R^2$ nel caso in cui questi valori vengano eliminati, per capire se il modello risulta migliore.
-```{r outliers}
+```{r outliers, warning=FALSE}
 c=which(abs(Profit0)>5000)
 detach(Pilgrim)
 data=Pilgrim[-c,]
@@ -267,7 +267,7 @@ summary(mod4)
 Quindi andando a ripetere il codice precedente, quando però eliminiamo gli outliers, miglioriamo l'$R^2$ che negli ultimi due modelli raggiunge circa il $50\%$. Per questo motivo nelle successive analisi considereremo il dataset senza outliers.
 
 Osserviamo inoltre che abbiamo un numero diverso di valori mancanti: ci sono 5219 osservazioni in cui non abbiamo l'informazione sulla online banking nel 2000 e 5238 osservazioni in cui non abbiamo l'informazione sul profitto nel 2000, questo vuol dire che il cliente non è rimasto nella banca nell'anno successivo. Quindi logicamente, non ci sono osservazioni in cui abbiamo l'informazione di Profit0 ma non di Online0. Ci sono invece 19 osservazioni in cui al contrario abbiamo l'informazione sul profitto, ma non sappiamo se il cliente ha utilizzato la banca online.
-```{r na}
+```{r na, warning=TRUE}
 sum(is.na(Online0))
 sum(is.na(Profit0))
 which(is.na(Profit0) != is.na(Online0))
@@ -288,7 +288,7 @@ hist(mod3$fitted,nclass=50, main ="Histogram of mod3")
 ```
 Andare a considerare il valore dell'$R^2$ per valtutare la bontà del modello non è molto opportuno perchè stiamo prevedendo se il cliente rimane oppure no, quindi è una variabile binaria. Dall'istogramma possiamo facilmente dedurre ci sono due gruppi abbastanza distinti, quindi quello che possiamo fare è fissare una certa soglia al di sopra della quale possiamo concludere che il cliente è sicuro, mentre al di sotto si trovano quei clienti che probabilmente il prossimo anno cambieranno la banca. Infatti ci sono due mode molto alte e sufficientemente lontane, mentre tra i valori di 0.7 e 0.8, troviamo una "zona grigia", dove la moda è molto bassa e i clienti sono abbastanza incerti. Inoltre saremmo interessati ad interpretare i valori dell'istogramma come delle probabilità, anche se ci sono dei valori più grandi di 1. In questo modo sarei in grado di capire sotto quale valore dovrei preoccuparmi del cliente.
 
-#--- PART 3 - ANALYZE retention with Logistic regression
+# Analisi di Retain con Regressione logistica
 Proviamo a prevedere il comportamento futuro di un cliente, utilizzando la regressione logistica.
 ```{r logistic}
 glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
@@ -299,13 +299,6 @@ hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
 Questo metodo risulta molto veloce,in quanto si ferma dopo solo 5 iterazioni. Inoltre le diagnostiche del modello sono un po' diverse, notiamo che non abbiamo più a disposizione l'$R^2$,ma non cambia il senso generale, come osserviamo dall'istogramma.
 ```{r confronto}
 plot(mod3$fitted, glm.out$fitted, xlab="Predicted OLS", ylab="Predicted logit")
-```
-# Regressione logistica andando ad eliminare gli outliers
-```{r logistic no out}
-glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
-  IncomeGiven+Tenure+District1100+District1200,family=binomial(logit))
-summary(glm.out)
-hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
 ```
 
 # Bilanciamento dataset
@@ -389,39 +382,110 @@ knn_roc = plot.roc(target.test,factor(knn_pred, ordered = TRUE), add=TRUE, col="
 
 legend("bottomright", legend = c("Logistic Regression", "Decision Tree", "KNN"), col=c("green", "blue", "red"))
 ```
-```{r roc2, message=TRUE,warning=TRUE}
 
+
+# Clustering
+Ora, dal dataset senza outliers, consideriamo solo coloro che nel 1999 erano offline (`Online9=0`) e che sono rimasti clienti nel 2000 (`Retain=1`)
+```{r new dataset, message=FALSE,warning=TRUE}
+detach(data)
+newdata = data[Online9==0 & Retain==1,]
+attach(newdata)
+Profit9=X9Profit
+#Online9=X9Online
+
+Profit0=X0Profit
+Online0=X0Online
+
+District=X9District
+District1100 = ifelse(District==1100,1,0)
+District1200 = ifelse(District==1200,1,0)
+
+Age=X9Age
+#AgeGiven = ifelse(is.na(Age),0,1)
+#AgeZero = ifelse(is.na(Age),1,Age)
+Age1 = ifelse(Age==1&!is.na(Age),1,0)
+Age2 = ifelse(Age==2&!is.na(Age),1,0)
+Age3 = ifelse(Age==3&!is.na(Age),1,0)
+Age4 = ifelse(Age==4&!is.na(Age),1,0)
+Age5 = ifelse(Age==5&!is.na(Age),1,0)
+Age6 = ifelse(Age==6&!is.na(Age),1,0)
+Age7 = ifelse(Age==7&!is.na(Age),1,0)
+
+Income=X9Inc
+#IncomeZero = ifelse(is.na(Income),0,Income)
+#IncomeGiven = ifelse(is.na(Income),0,1)
+Income1 = ifelse(Income==1&!is.na(Income),1,0)
+Income2 = ifelse(Income==2&!is.na(Income),1,0)
+Income3 = ifelse(Income==3&!is.na(Income),1,0)
+Income4 = ifelse(Income==4&!is.na(Income),1,0)
+Income5 = ifelse(Income==5&!is.na(Income),1,0)
+Income6 = ifelse(Income==6&!is.na(Income),1,0)
+Income7 = ifelse(Income==7&!is.na(Income),1,0)
+Income8 = ifelse(Income==8&!is.na(Income),1,0)
+Income9 = ifelse(Income==9&!is.na(Income),1,0)
+
+Tenure=X9Tenure
+Tenure1 = ifelse(Tenure<10,1,0)
+Tenure2 = ifelse(Tenure>=10&Tenure<20,1,0)
+Tenure3 = ifelse(Tenure>=20&Tenure<30,1,0)
+Tenure4 = ifelse(Tenure>=30&Tenure<40,1,0)
 ```
 
+Se c'è NA tutti gli Age e Income sono 0 ad indicare un'altra classe!!! Tenure>=40 è quando sono tutti 0 
+
+```{r clustering, message=TRUE,warning=TRUE}
+df = data.frame(Age1, Age2, Age3, Age4, Age5, Age6, Age7, Income1, Income2, Income3, Income4, Income5, Income6, Income7, Income8, Income9, Tenure1, Tenure2, Tenure3, Tenure4)
+k2 <- kmeans(df, centers = 20, nstart = 25)
+#k2
+```
+
+```{r for cluster}
+deltaProfit = Profit0-Profit9
+for(num_cluster in 1:20) {
+  #print(paste("Tot in cluster:", sum(k2$cluster==num_cluster)))
+  #print(paste("Offline in cluster",sum(Online0[k2$cluster==num_cluster]==0)))#/sum(k2$cluster==num_cluster))
+  #print(paste("Online in cluster",sum(Online0[k2$cluster==num_cluster]==1)))
+  deltaProfitOnline  = mean(deltaProfit[Online0[k2$cluster==num_cluster]==1])
+  deltaProfitOffline = mean(deltaProfit[Online0[k2$cluster==num_cluster]==0])
+  if(is.na(deltaProfitOnline)){deltaProfitOnline=0}
+  if(is.na(deltaProfitOffline)){deltaProfitOffline=0}
+  #print(paste("Perc di Online con profitto positivo" ,mean(deltaProfit[Online0[k2$cluster==num_cluster]==1]>0)))
+  #print(paste("deltaProfit online ",deltaProfitOnline))
+  #print(paste("deltaProfit offline",deltaProfitOffline))
+  if(deltaProfitOnline-deltaProfitOffline>0){
+    print(deltaProfitOnline-deltaProfitOffline)
+  }
+}
+```
 
 #--- PART 4 - Demographics vs. Past profit to analyze profitability
 Possiamo considerare le variabili `Age` e `Income` effettivamente come categoriche.
-```{r completo categorico}
-mod1 = lm(Profit0 ~ 
-  Profit9+Online9+Tenure+District1100+District1200+factor(Age)+factor(Income))
-summary(mod1)
-```
+# ```{r completo categorico}
+# mod1 = lm(Profit0 ~ 
+#   Profit9+Online9+Tenure+District1100+District1200+factor(Age)+factor(Income))
+# summary(mod1)
+# ```
 
-```{r no Age ne Income}
-mod2 = lm(Profit0 ~ Profit9+Online9+Tenure)
-summary(mod2)
-```
+# ```{r no Age ne Income}
+# mod2 = lm(Profit0 ~ Profit9+Online9+Tenure)
+# summary(mod2)
+# ```
 
-```{r categorico+district}
-mod3 = lm(Profit0 ~ District1100+District1200+factor(Age)+factor(Income))
-summary(mod3)
-```
+# ```{r categorico+district}
+# mod3 = lm(Profit0 ~ District1100+District1200+factor(Age)+factor(Income))
+# summary(mod3)
+# ```
 
 
-```{r Profit0}
-summary(Profit0)
-plot(Profit0)
-m=which(Profit0<=-5000)
-M=which(Profit0>=5000)
-d=Pilgrim[-m,]
-dtab=d[-M, ]
-summary(dtab)
-```
+# ```{r Profit0}
+# summary(Profit0)
+# plot(Profit0)
+# m=which(Profit0<=-5000)
+# M=which(Profit0>=5000)
+# d=Pilgrim[-m,]
+# dtab=d[-M, ]
+# summary(dtab)
+# ```
 
 ```{r detach}
 #detach(Pilgrim)
