@@ -30,18 +30,18 @@ Vediamo l'inizio del dataset per vedere com'è fatto:
 head(CBC)
 ```
 La variabile "`network`" è categorica e può assumere tre diversi valori a seconda della rete sulla quale viene trasmesso il programma. Le variabili "`month`" e "`day`" indicano rispettivamente il mese ed il giorno della settimana in cui avviene la trasmissione e quindi sono entrambe categoriche. La variabile "`fact`" è binaria e caratterizza i film, distinguendo quelli che sono basati su fatti reali da quelli di pura fantasia, mentre la variabile "`stars`" è un valore quantitativo discreto che rappresenta il numero di attori che hanno ricevuto un ingaggio superiore a $300,000. Infine le informazioni "`prevratings`" e "`competition`" sono varibili quantitative continue che si riferiscono il primo al valore di rating del programma immediatamente precedente mandato in onda sulla stessa rete, e l'altro è una media dei valori dei rating degli altri programmi mandati in onda contemporaneamente dalle altre due reti.
-Utilizzando questi valori vorremo prevedere il valore di rating del film che stiamo considerando, che è espresso appunto dal valore della variabile "`rating`".
+Utilizzando questi valori vorremo prevedere il quello del rating del film che stiamo considerando, che è espresso appunto dal valore della variabile "`rating`".
 
 Vediamo inoltre che non ci sono elementi NA (Not Available), quindi possiamo usare tutte le osservazioni nel dataset:
 ```{r na}
 sum(is.na(rating))
 ```
-Possiamo anche osservare la distribuzione dei rating dei diversi film ed osservare il valore medio.
+Possiamo anche osservare la distribuzione dei rating dei diversi film e calcolare il valore medio.
 ```{r hist}
 hist(rating)
 mean(rating)
 ```
-Abbiamo a disposizione un dataset piccolo, che contiene solamente 88 osservazioni che vorremmo utilizzare sia per formulare il nostro modello di previsione (training set), sia per testarlo per capire quanto sono accurate le nostre previsioni. Per questo motivo, scegliamo arbitrariamente di considerare come test set il 30% del dataset totale e come training la parte rimanente.
+Abbiamo a disposizione un dataset piccolo, che contiene solamente 88 osservazioni che vorremmo utilizzare sia per formulare il nostro modello di previsione (training set), sia per testarlo per capire quanto siano accurate le nostre previsioni. Per questo motivo, scegliamo arbitrariamente di considerare come test set il 30% del dataset totale e come training la parte rimanente.
 
 ```{r train}
 train=sample(88,88*0.7)
@@ -53,12 +53,12 @@ Consideriamo il dataset CBC, ma per la formulazione del modello di regressione p
 ```{r lm1}
 lm.fit=lm(rating~prevratings,data=CBC,subset=train)
 ```
-Dal summary vediamo che "`prevratings`" ha un coefficiente di regressione positivo. Questo fatto ha un senso logico perché possiamo suppore che quando il programma precedente ha un rating più alto, le persone rimangono sul quel canale e non lo cambino dopo la fine di quest'ultimo. Inoltre la variabile "`prevratings`", avendo un p-value sufficientemente piccolo, risulta significativa.
+Dal summary vediamo che "`prevratings`" ha un coefficiente di regressione positivo. Questo ha un senso logico, perché possiamo suppore che quando il programma precedente ha un rating più alto, le persone rimangono sul quel canale e non lo cambiano dopo la fine di quest'ultimo. Inoltre la variabile "`prevratings`", avendo un p-value sufficientemente piccolo, risulta significativa.
 
 ```{r summary_lm1}
 summary(lm.fit)
 ```
-Però il modello non spiega tutta la variabilità, infatti il valore $R^2$ è solo $0.1717$. L'obiettivo è quello di massimizzare questo valore, in modo da poter predire il valore del rating con la maggiore accuratezza possibile. Possiamo vedere anche nel `plot`, che non tutta la variabilità è rappresentata.
+Però il modello non spiega tutta la variabilità, infatti il valore $R^2$ è solo $0.1717$,  questo significa che con questo modello ne spieghiamo solo il $17\%$. L'obiettivo è quello di massimizzare questo valore, in modo da poter predire il valore del rating con la maggiore accuratezza possibile. Possiamo vedere anche nel `plot`, che non tutta la variabilità è rappresentata, infatti ci sono molti punti abbastanza distanti dalla retta.
 ```{r plot_lm1}
 plot(prevratings, rating)
 abline(lm.fit, col="red")
@@ -66,7 +66,7 @@ abline(lm.fit, col="red")
 
 Per capire la qualità della nostra previsione e per misurare l'errore, possiamo considerare il valore atteso del quadrato della deviazione, il MSE (Mean Square Error):
 $$\textbf{E}[(y-\widehat{y})^2] =  \textbf{E}^2[(f(x_{0})-\widehat{f}({x}_{0})]+(\sigma_\epsilon)^2+ Var[\widehat{f}({x}_{0})]$$
-dove $y=f(x_0)+\epsilon$ e $\widehat{y}=\widehat{f}({x}_{0})$. Il primo termine viene chiamato bias, il secondo è l'errore irriducibile dovuto al rumore interinseco presente nel sistema, mentre l'ultimo termine rappresenta la varianza.
+dove $y=f(x_0)+\epsilon$ e $\widehat{y}=\widehat{f}({x}_{0})$. Il primo termine del MSE viene chiamato bias, il secondo è l'errore irriducibile dovuto al rumore interinseco presente nel sistema, mentre l'ultimo termine rappresenta la varianza.
 
 Possiamo calcolare il MSE andando a validare questo modello sul sottoinsieme di test. L'errore viene definito come il rapporto tra la somma, su tutte le osservazioni presenti nel test set, del quadrato dell'errore sulle singole osservazioni, diviso per la cardinalità dell'insieme test.
 
@@ -98,10 +98,10 @@ for (i in 2:(length(potenze)+1)){
 ma
 ```
 
-Possiamo vedere che, aumentando il grado dei polinomi in funzione di `prevratings`, non diminuisce di molto il MSE, ma aumenta l'$R^2$, questo significa che stiamo facendo overfitting. Infatti con l'aumento della complessità del modello, $R^2$ nel sample, mal che vada rimane lo stesso perchè sto aggiungendo altri modi per spiegare  la variabile che voglio prevedere, quando però quando testiamo il modello su un insieme esterno, questo non è necessariamente vero perchè contemporaneamente sta aumentando la varianza.
+Possiamo vedere che, aumentando il grado dei polinomi in funzione di `prevratings`, non diminuisce di molto il MSE, ma aumenta l'$R^2$, questo significa che stiamo facendo overfitting. Infatti con l'aumento della complessità del modello, $R^2$ nel sample, mal che vada rimane lo stesso perchè sto aggiungendo altri modi per spiegare  la variabile che voglio prevedere, quando però andiamo a testare il modello su un insieme esterno, questo non è necessariamente vero perchè, anche se sta diminuendo il bias, contemporaneamente sta aumentando la varianza.
 
 ## Regressione con cross-validation
-Poichè il nostro dataset è piuttosto piccolo per eseguire un test indipendente, può essere seguita la strategia della cross-validation. La tecnica consiste nel suddividere in $K$ sottoinsiemi disgiunti i nostri dati, per ogni sottoinsime $k-esimo$ formulare il modello e calcolare il $MSE_k$ utilizzando i dati di partenza andando però ad escludere il sottoinsieme in questione, testare poi questo modello su quest'ultimo sottoinsieme. Così ogni sottoinsieme svolge $K-1$ volte il ruolo di training set e esattamente una volta il ruolo di test set. Il MSE complessivo del modello è:
+Poichè il nostro dataset è piuttosto piccolo per eseguire un test indipendente, può essere seguita la strategia della cross-validation. La tecnica consiste nel suddividere in $K$ sottoinsiemi disgiunti i nostri dati, per ogni sottoinsime $k-esimo$ formulare un modello e calcolare il $MSE_k$ utilizzando i dati di partenza andando però ad escludere il sottoinsieme in questione, testare poi questo modello su quest'ultimo sottoinsieme. Così ogni sottoinsieme svolge $K-1$ volte il ruolo di training set e esattamente una volta il ruolo di test set. Il MSE complessivo del modello è:
 $$CV(K) = \displaystyle \sum_{k=1}^{K} \frac{n_k}{n}MSE_k.$$
 
 ### Leave-One-Out Cross Validation
@@ -137,9 +137,10 @@ for (i in potenze){ #LOOCV su 8 modelli
 }
 cv.error
 ```
+Possiamo concludere quindi che non è detto che nel momento in cui aumentiamo il grado del polinomio, automaticamente diminuisce il valore dell'errore perchè visto che la funzione è molto oscillante stiamo introducendo del rumore.
 
 ### K-fold Cross Validation
-Proviamo inoltre ad utilizzare la K-fold Cross Validation. In questo caso specifico, dividiamo l'intero dataset in $K=10$ sottogruppi ed ogni volta utilizziamo un sottoinsieme diverso che svolge la funzione di test set. Questo metodo risulta computazionalmente più veloce perchè andiamo a confrontare meno osservazioni.
+Proviamo inoltre ad utilizzare la K-fold Cross Validation. In questo caso specifico, dividiamo l'intero dataset in $K=10$ sottogruppi ed ogni volta utilizziamo un sottoinsieme diverso che svolge la funzione di test set. Questo metodo risulta computazionalmente più veloce perchè andiamo a confrontare meno osservazioni, ma le conclusioni che possiamo trarre sono le stesse.
 
 ```{r k-fold CV}
 set.seed(20)
@@ -206,7 +207,7 @@ plot(reg.summary$bic,xlab="Number of Variables",ylab="BIC",type='l')
 points(u,reg.summary$bic[u],col="red",cex=2,pch=20)
 ```
 
-Analizzando i diversi grafici ed andando ad individuare i punti di ottimo (il massimo per l'$R^2_{adj}$ e il minimo per gli altri due indici), osserviamo che secondo l'$R^2_{adj}$ il numero ottimale da scegliere è 11, scegliendo il criterio del $C_p$, invece questo scende ad 8, ed si riduce infine a 4, andando a guardare il $BIC$. 
+Analizzando i diversi grafici ed andando ad individuare i punti di ottimo (il massimo per l'$R^2_{adj}$ e il minimo per gli altri due indici), osserviamo che secondo l'$R^2_{adj}$ il numero ottimale di variabili da considerare è 11, scegliendo il criterio del $C_p$, invece questo scende ad 8, ed si riduce infine a 4, andando a guardare il $BIC$. 
 
 ### Forward/Backward Stepwise Selection
 Metodi alternativi per selezionare il miglior sottoinsieme di variabili, sono quelli della selezione greedy. Possiamo procedere o con la selezione "forward", dove partiamo dal modello nullo ed aggiungiamo una variabile per volta, scegliendo quella che porta al più alto miglioramento, oppure con la selezione "backward", in cui seguiamo la strada al contrario, quindi partiamo dal modello completo andando ad eliminare una variabile alla volta.
@@ -349,7 +350,7 @@ In conclusione possiamo dire che il modello migliore con un MSE di  2.301024 è 
 ```{r conclusioni, warning=TRUE}
 reg.best.coef
 ```
-Da questo possiamo capire che il network CBC di default ha un rating più basso di ABN, ma più alto di BBS. La presenza di un film basato su una storia vera fa aumentare il rating, come lo fa aumentare la presenza di star. Come nell'analisi iniziale anche il rating del programma precedente fa aumentare il rating del programma serale, ma come si è visto l'uso di questa informazione da sola ha una previsione meno precisa.
+Andando ad osservare i diversi coefficienti nel modello, possiamo trarre diverse conclusioni. Innanzitutto osserviamo che il network CBC di default ha un rating più basso di ABN, ma più alto di BBS. Inoltre quando viene mandato in onda un film basato su una storia vera il rating aumenta, perchè il coefficiente è positivo, così come lo fa aumentare la presenza di star nel film. Come nell'analisi iniziale, anche il rating del programma precedente fa aumentare il rating del programma serale, ma come si è visto l'uso di questa informazione da sola ha una previsione meno precisa.
 
 ```{r conclusioni2}
 mean(abs(reg.best.pred-y.test))
