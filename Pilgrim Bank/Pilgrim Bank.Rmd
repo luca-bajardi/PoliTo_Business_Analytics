@@ -1,17 +1,34 @@
 ---
 title: "Analisi Pilgrim Bank - Tesina"
-author: "Luca Bajardi e Francesca Collini"
-date: "31/07/2020"
-output:
-  pdf_document: default
-  word_document: default
+author:
+  - Luca Bajardi:
+      email: luca.bajardi@studenti.polito.it
+      institute: polito
+      correspondence: true
+  - name: Francesca Collini
+    institute: polito
+    email: s277731@studenti.polito.it
+    correspondence: true
+institute:
+  - polito: Dipartimento di Scienze Matematiche, Politecnico di Torino
+date: "31 Luglio 2020"
+output: 
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+    pandoc_args:
+      - '--lua-filter=scholarly-metadata.lua'
+      - '--lua-filter=author-info-blocks.lua'
 ---
  
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Introduzione
+\newpage
+
+# Introduzione
 Utilizziamo il dataset fornito dalla "Harvad Business School" relativo alla redditività di alcuni clienti nella Pilgrim Bank nel corso degli anni 1999 e 2000. 
 
 Inizialmente, cerchiamo di predire il profitto di un cliente in base alle sue caratteristiche anagrafiche, questa analisi potrebbe essere utile per la banca nel caso in cui debba decidere ad esempio se concedere un prestito oppure no. Vorrei quindi una previsione molto accurata in modo da capire se quel determinato cliente sarà in grado di restituire il denaro e scegliere quelle azioni finanziarie che siano il meno rischiose possibile. Nella previsione è importante tenere conto del fatto che potrebbero mancare alcune informazioni relative ai clienti, in questo caso è necessario scegliere il modo opportuno per cercare di non buttare via quei dati, ma utilizzarli comunque per la nostra previsione.
@@ -230,7 +247,19 @@ summary(mod)
 
 Anche in questo caso l'$R^2$ continua a rimanere molto piccolo e molti livelli di `Age` e di `Income` non risultano neppure significativi.
 
+### Modello con interazione
+
+Un ulteriore miglioramento a questi modelli, potrebbe essere fatto andando ad aggiungere le interazioni tra le variabili. Tuttavia anche se l'$R^2$ migliora leggeremente, comunque non otteniamo dei risultati sufficientemente buoni per la previsione, come possiamo osservare nei due modelli seguenti:
+```{r lm interazione1}
+mod = lm(Profit ~ Online+Age1+Income1+Tenure+District1100+District1200+Income1:Age1)
+summary(mod)
+```
+```{r lm interazione2}
+mod = lm(Profit ~ Online+Age1+Income1+Tenure+District1100+District1200+Age1:Online)
+summary(mod)
+```
 In conclusione, i modelli trovati sono poco utili nella previsione del profitto perchè non riescono bene a spiegare la varibilità presente.
+
 
 # Profitto nel tempo
 Possiamo provare a migliorare la situazione, utilizzando la storia della banca, e quindi anche le informazioni passate dei clienti.
@@ -313,6 +342,23 @@ summary(mod4)
 ```
 Quindi andando a ripetere il codice precedente, quando però eliminiamo gli outliers, miglioriamo l'$R^2$ che negli ultimi due modelli raggiunge oltre il $50\%$. Per questo motivo nelle successive analisi considereremo il dataset senza outliers.
 
+### Modello con interazione
+
+Inoltre, come nel caso precedente, nel momento in cui andiamo ad introdurre delle possibili interazioni tra le variabili, come nei successivi modelli, logicamente l'$R^2$ migliora, ma non significativamente. Quindi piuttosto conviene spostare la nostra attenzione su un altro tipo di analisi.
+
+```{r mod5}
+mod5 = lm(Profit0 ~ Profit9+Online9+Tenure+District1100+District1200+Profit9:Online9)
+summary(mod5)
+```
+
+```{r mod6}
+mod6 = lm(Profit0 ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenure
+           +District1100+District1200+ IncomeZero:AgeZero)
+summary(mod6)
+```
+
+\newpage
+
 # Retain
 Quello che possiamo fare, è considerare una variabile aggiuntiva `Retain` che ci dice se il cliente rimane nella banca anche nell'anno successivo. A questo punto vorremmo capire come prevedere al meglio se un cliente rimane con la banca nell'anno successivo oppure no, questo potrebbe dipendere da tutte le caratteristiche del cliente.
 
@@ -345,7 +391,7 @@ plot(mod3$fitted, glm.out$fitted, xlab="Predicted OLS", ylab="Predicted logit")
 ```
 I dati utilizzati per costruire questo modello non sono bilanciati e quindi questo non è ottimale. Per fare una previsione più accurata possiamo procedere con il bilanciamento del dataset.
 
-# Bilanciamento dataset
+## Bilanciamento dataset
 Andando ad osservare la distribuzione della variabile Retain, notiamo che il dataset risulta molto sbilanciato, perchè solamente 5238 clienti decidono di lasciare la banca nell'anno successivo.
 ```{r bilanciamento dati1}
 Retain = as.factor(Retain)
@@ -457,7 +503,8 @@ library(e1071)
 dim_data_balanced_under = min(sum(Retain==1),sum(Retain==0))*2
 data_balanced_under <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven
                                     +IncomeZero+IncomeGiven+Tenure+District1100
-                                    +District1200, method = "under",N = dim_data_balanced_under)$data
+                                    +District1200, method = "under",
+                                    N = dim_data_balanced_under)$data
 set.seed(1)
 train = sample(1:nrow(data_balanced_under), nrow(data_balanced_under)*0.7)
 df.train=data_balanced_under[train,]
@@ -551,7 +598,9 @@ A questo punto, il nostro obiettivo è quello di applicare un algoritmo di clust
 ```{r clustering, message=TRUE,warning=TRUE}
 set.seed(1)
 num_tot_cluster = 25
-df = data.frame(Age1, Age2, Age3, Age4, Age5, Age6, Age7, Income1, Income2, Income3, Income4, Income5, Income6, Income7, Income8, Income9, Tenure1, Tenure2, Tenure3, Tenure4, District1100, District1200)
+df = data.frame(Age1, Age2, Age3, Age4, Age5, Age6, Age7, Income1, Income2, Income3, 
+                 Income4, Income5, Income6, Income7, Income8, Income9, Tenure1, 
+                 Tenure2, Tenure3, Tenure4, District1100, District1200)
 k2 <- kmeans(df, centers = num_tot_cluster, nstart = 25)
 ```
 
