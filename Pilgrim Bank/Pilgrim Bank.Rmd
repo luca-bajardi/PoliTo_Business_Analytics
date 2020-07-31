@@ -1,5 +1,5 @@
 ---
-title: "Pilgrim Bank"
+title: "Analisi Pilgrim Bank - Tesina"
 author: "Luca Bajardi e Francesca Collini"
 date: "31/07/2020"
 output:
@@ -10,6 +10,17 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+
+## Introduzione
+Utilizziamo il dataset fornito dalla "Harvad Business School" relativo alla redditività di alcuni clienti nella Pilgrim Bank nel corso degli anni 1999 e 2000. 
+
+Inizialmente, cerchiamo di predire il profitto di un cliente in base alle sue caratteristiche anagrafiche, questa analisi potrebbe essere utile per la banca nel caso in cui debba decidere ad esempio se concedere un prestito oppure no. Vorrei quindi una previsione molto accurata in modo da capire se quel determinato cliente sarà in grado di restituire il denaro e scegliere quelle azioni finanziarie che siano il meno rischiose possibile. Nella previsione è importante tenere conto del fatto che potrebbero mancare alcune informazioni relative ai clienti, in questo caso è necessario scegliere il modo opportuno per cercare di non buttare via quei dati, ma utilizzarli comunque per la nostra previsione.
+
+Un altro tipo di analisi che vogliamo effettuare è quella nel tempo. Infatti, per ciascun cliente che è presente nella base dati nel 1999, abbiamo un'informazione sull'anno successivo: sappiamo se il cliente decide di lasciare la banca oppure di rimanerci e in quest'ultimo caso conosciamo anche il suo profitto in quell'anno. Quindi l'obiettivo della nostra analisi è quello di riuscire a prevedere se un cliente rimarrà fedele alla banca o meno. Per farlo, utilizziamo diversi metodi di classificazione tra questi l'albero di decisione e il knn. Inoltre poiché la variabile target alla quale siamo interessati è binaria, possiamo utilizzare anche la regressione logistica e l'svm. 
+
+Infine ci concentriamo sull'eventuale passaggio di un cliente dal servizio offline a quello online. Se riuscissimo a  capire che, per una determinata tipologia di clienti, il passaggio al canale online, permette di guadagnare maggiormente, la banca potrebbe ad esempio portare avanti delle campagne pubblicitarie per fare in modo che i clienti scelgano l'opzione più profittevole. Per ottenere questo tipo di informazione, applichiamo un algoritmo di clustering (il k-means) considerando solamente quei clienti che nel 1999 utilizzavano il servizio di banca offline e che nel 2000 sono rimasti clienti della banca. All'interno di ogni cluster poi, calcoliamo la media, separatamente per coloro che hanno scelto di passare al digitale e per quelli che sono rimasti con il servizio standard. In questo modo riusciamo a definire delle tipologie di clienti e capire se per la banca risulta più o meno vantaggioso far passare il cliente alla banca online.
+
+
 ## Esplorazione dei dati
 Carichiamo i dati leggendo il file csv e settiamo il seme del generatore pseudo-casuale così da avere i risultati sempre uguali.
 ```{r read}
@@ -77,7 +88,7 @@ cat('average profit ON', mean(ProfitOnline), '\n')
 ProfitOffline = Profit[Online==0]
 cat('average profit OFF', mean(ProfitOffline), '\n')
 ```
-Quello che vorremmo capire è se questa differenza è stocasticamente significativa, quindi se davvero coloro che utilizzano i servizi online mi permettono di guadagnare di più. Per questo motivo, possiamo eseguire un `t.test` sulle due popolazioni, i clienti che utilizzano il servizio online e coloro che non lo usano, per andare a vedere quanto vale il p-value. L'ipotesi nulla in questo caso è che le medie siano uguali e che quindi la differenza tra le medie delle due popolazioni non sia significativa.
+Quello che vorremmo capire è se questa differenza è statisticamente significativa, quindi se davvero coloro che utilizzano i servizi online mi permettono di guadagnare di più. Per questo motivo, possiamo eseguire un `t.test` sulle due popolazioni, i clienti che utilizzano il servizio online e coloro che non lo usano, per andare a vedere quanto vale il p-value. L'ipotesi nulla in questo caso è che le medie siano uguali e che quindi la differenza tra le medie delle due popolazioni non sia significativa.
 Analizziamo inoltre l'intervallo di confidenza per vedere se i dati sono sufficienti o no. Infatti se intervallo fosse troppo grande vorrebbe dire che avrei bisogno di più clienti per formulare una teoria generale.
 ```{r int.conf}
 cat('Conf int profit ', t.test(Profit)$conf.int, '\n')
@@ -90,11 +101,12 @@ Possiamo ottenere lo stesso risultato impostando il modello di regressione class
 mod = lm(Profit ~ Online)
 summary(mod)
 ```
-Dal summary del modello, possiamo osservare che il valore dell'intercetta è la media del profitto tra coloro che operano offline, mentre il valore aggiunto di quelli che operano online è di quasi 6 dollari come la differenza tra la media di quelli che operano online e la media di quelli che operano offline. Anche in questo caso però, il p-value è superiore a 0.05 come in precedenza. Questo significa che la variabile Online non è significativa. Tuttavia, questo potrebbe essere dovuto al fatto che stiamo mettendo insieme clienti molto diversi tra loro e quindi considerando un unico modello non riusciamo a distinguere bene i singoli effetti. Per questo introduciamo l'età nel modello di regressione.
-
-La variabile `Age` è riconosciuta numerica anche se in realtà è categorica. Nell'analisi dovremo trasformarla in `factor` perché altrimenti vi è troppa influenza dell'ordinamento delle variabili categoriali.
+Dal summary del modello, possiamo osservare che il valore dell'intercetta è la media del profitto tra coloro che operano offline, mentre il valore aggiunto di quelli che operano online è di quasi 6 dollari come la differenza tra la media di quelli che operano online e la media di quelli che operano offline. Anche in questo caso però, il p-value è superiore a 0.05 come in precedenza. Questo significa che la variabile `Online` non è significativa. Tuttavia, questo potrebbe essere dovuto al fatto che stiamo mettendo insieme clienti molto diversi tra loro e quindi considerando un unico modello non riusciamo a distinguere bene i singoli effetti. Per questo introduciamo l'età nel modello di regressione.
 
 ## Age
+
+La variabile `Age` è riconosciuta numerica anche se in realtà è categorica. Nell'analisi dobbiamo trasformarla in `factor` perché altrimenti vi è troppa influenza dell'ordinamento delle variabili categoriali.
+
 ```{r age factor}
 Age1 = as.factor(Age)
 summary(Age1)
@@ -142,7 +154,7 @@ Anche se questa variabile risulta significativa, i valori dei coefficienti sono 
 ### Rimpiazziamo i valori mancanti con la media
 Una possibile alternativa è quella di sostituire i valori mancanti con la media dell'età calcolata sui valori presenti.
 ```{r AgeAverage}
-mm = mean(Age, na.rm=TRUE) #nel calcolo della media non consideriamo i valori mancanti
+mm = mean(Age, na.rm=TRUE)
 AgeAverage = ifelse(is.na(Age),mm,Age)
 table(AgeAverage)
 ```
@@ -151,9 +163,9 @@ mod = lm(Profit ~ Online+AgeAverage)
 summary(mod)
 ```
 
-Anche in questo caso, la variabile risulta significativa, ma ovviamente osserviamo che i valori dei coefficienti cambiano, ed in particolare cambia il contributo della variabile Online, quindi a seconda di come tappo il buco, di come scelgo di inserire i valori mancanti nel modello, otteniamo un risultato diverso. Questo ci suggerisce che probabilmente, non è questa la strada giusta per procedere.
+Anche in questo caso, la variabile risulta significativa, ma ovviamente osserviamo che i valori dei coefficienti cambiano, ed in particolare cambia il contributo della variabile `Online`, quindi a seconda di come tappo il buco, di come scelgo di inserire i valori mancanti nel modello, otteniamo un risultato diverso. Questo ci suggerisce che probabilmente, non è questa la strada giusta per procedere.
 
-Per tentare di evitare questo problema potremmo  considerare i modelli ottenuti tenendo conto sia della variabile Age opportunamente modificata, sia del fatto che la variabile Age venga fornita oppure no. Questo ci permette di considerare una variabile categorica che indica la presenza o meno dell'informazione sull'età, quindi non importa più di tanto come vado a rimepire il buco dell'informazione mancante.
+Per tentare di evitare questo problema potremmo  considerare i modelli ottenuti tenendo conto sia della variabile `Age` opportunamente modificata, sia del fatto che la variabile `Age` venga fornita oppure no. Questo ci permette di considerare una variabile categorica che indica la presenza o meno dell'informazione sull'età, quindi non importa più di tanto come vado a rimepire il buco dell'informazione mancante.
 
 ```{r lm_AgeZero+Given}
 mod = lm(Profit ~ Online+AgeZero+AgeGiven)
@@ -178,7 +190,7 @@ summary(mod)
 Possiamo notare, che il valore della variabile Online scende un po' (passando da circa $19\$$ ad $11\$$ e che  l'$R^2$ è quasi raddoppiato, ma rimane comunque piccolo.
 
 ## Altri modelli di regressione
-Notiamo che non ci sono valori mancanti nella variabile `District`, tuttavia viene considerata numerica, quindi vorremmo trasformarla in categorica, in modo che ogni valore venga associato ad uno dei tre distretti. Quello che possiamo fare è introdurre due variabili binarie che rappresentano i distretti. Notiamo inoltre che non ci sono valori mancanti neanche nella variabile Tenure.
+Notiamo che non ci sono valori mancanti nella variabile `District`, tuttavia viene considerata numerica, quindi vorremmo trasformarla in categorica, in modo che ogni valore venga associato ad uno dei tre distretti. Quello che possiamo fare è introdurre due variabili binarie che rappresentano i distretti. Notiamo inoltre che non ci sono valori mancanti neanche nella variabile `Tenure`.
 ```{r district}
 any(is.na(District))
 table(District) 
@@ -203,7 +215,7 @@ levels(Age1)
 mod = lm(Profit ~ Online+Age1+IncomeZero+IncomeGiven+Tenure+District1100+District1200)
 summary(mod)
 ```
-Anche in questo caso il p-value continua a rimanere molto piccolo e molte livelli di `Age` non risultano neppure significativi.
+Anche in questo caso l'$R^2$ continua a rimanere molto piccolo e molti livelli di `Age` non risultano neppure significativi.
 
 ### Income come variabile categorica
 ```{r IncomeCat}
@@ -216,12 +228,14 @@ mod = lm(Profit ~ Online+Age1+Income1+Tenure+District1100+District1200)
 summary(mod)
 ```
 
+Anche in questo caso l'$R^2$ continua a rimanere molto piccolo e molti livelli di `Age` e di `Income` non risultano neppure significativi.
 
+In conclusione, i modelli trovati sono poco utili nella previsione del profitto perchè non riescono bene a spiegare la varibilità presente.
 
 # Profitto nel tempo
-In conclusione, i modelli trovati sono poco utili nella previsione del profitto perchè non riescono bene a spiegare la varibilità presente. Possiamo provare a migliorare la situazione, utilizzando la storia della banca, e quindi anche le informazioni passate dei clienti.
+Possiamo provare a migliorare la situazione, utilizzando la storia della banca, e quindi anche le informazioni passate dei clienti.
 ```{r parte b}
-#Andiamo a rinominare le variabili
+#Rinominiamo le variabili
 Profit9=X9Profit 
 Online9=X9Online
 Profit0=X0Profit
@@ -229,6 +243,7 @@ Online0=X0Online
 Income=X9Inc
 Age=X9Age
 ```
+
 
 ## Modello base
 Proviamo a prevedere il profitto di ciascun cliente nel 2000, andando ad utilizzare l'informazione binaria riguardo all'uso dell'online banking. L'$R^2$ è troppo basso, quindi vorremmo migliorare questo modello.
@@ -262,44 +277,7 @@ Possiamo anche supporre che alcuni dei dati anagrafici non siano rilevanti, ma m
 mod4 = lm(Profit0 ~ Profit9+Online9+Tenure+District1100+District1200)
 summary(mod4)
 ```
-<!--Una possibile strategia per provare ulteriormente a migliorare il modello, è quella di utilizzare delle trasformazioni non lineari per collegare le diverse variabili.
 
-
-```{r mod5}
-
-data=Pilgrim[which(Pilgrim$X0Profit>0),]
-detach(Pilgrim)
-attach(data)
-Profit9=X9Profit 
-Online9=X9Online
-Profit0=X0Profit
-Online0=X0Online
-Income=X9Inc
-Age=X9Age
-Tenure=X9Tenure
-District=X9District
-IncomeZero5 = ifelse(is.na(Income),0,Income)
-IncomeGiven5 = ifelse(is.na(Income),0,1)
-AgeZero5 = ifelse(is.na(Age),0,Age) 
-AgeGiven5= ifelse(is.na(Age),0,1) 
-District1100_5 = ifelse(District==1100,1,0)
-District1200_5 = ifelse(District==1200,1,0)
-log_P=log(Profit0)
-mod5 = lm(log_P ~ Profit9+Online9+AgeZero5+AgeGiven5+IncomeZero5+IncomeGiven5+Tenure+District1100_5+District1200_5)
-summary(mod5)
-detach(data)
-attach(Pilgrim)
-
-Profit9=X9Profit 
-Online9=X9Online
-Profit0=X0Profit
-Online0=X0Online
-Income=X9Inc
-Age=X9Age
-Tenure=X9Tenure
-District=X9District
-```
--->
 
 Quello che possiamo osservare è come le due variabili legate al profitto del singolo cliente nei diversi anni, siano correlate tra loro. Osserviamo infatti che c'è una correlazione di circa il $60\%$. Sono presenti inoltre solamente 8 osservazioni in cui il profitto nel 2000 risulta essere maggiore di 5000 e una osservazione con profitto nel 2000 minore di -5000, quindi possiamo pensare che quelle osservazioni siano degli outliers.
 ```{r profit}
@@ -335,17 +313,10 @@ summary(mod4)
 ```
 Quindi andando a ripetere il codice precedente, quando però eliminiamo gli outliers, miglioriamo l'$R^2$ che negli ultimi due modelli raggiunge oltre il $50\%$. Per questo motivo nelle successive analisi considereremo il dataset senza outliers.
 
-Osserviamo inoltre che abbiamo un numero diverso di valori mancanti: ci sono 5219 osservazioni in cui non abbiamo l'informazione sulla online banking nel 2000 e 5238 osservazioni in cui non abbiamo l'informazione sul profitto nel 2000, questo vuol dire che il cliente non è rimasto nella banca nell'anno successivo. Quindi logicamente, non ci sono osservazioni in cui abbiamo l'informazione di Profit0 ma non di Online0. Ci sono invece 19 osservazioni in cui al contrario abbiamo l'informazione sul profitto, ma non sappiamo se il cliente ha utilizzato la banca online.
-```{r na, warning=TRUE}
-sum(is.na(Online0))
-sum(is.na(Profit0))
-which(is.na(Profit0) != is.na(Online0))
-which(is.na(Profit0) < is.na(Online0))
-which(is.na(Profit0) > is.na(Online0))
-```
-
 # Retain
 Quello che possiamo fare, è considerare una variabile aggiuntiva `Retain` che ci dice se il cliente rimane nella banca anche nell'anno successivo. A questo punto vorremmo capire come prevedere al meglio se un cliente rimane con la banca nell'anno successivo oppure no, questo potrebbe dipendere da tutte le caratteristiche del cliente.
+
+Si considera che il cliente rimane nella banca se è presente il valore di `Profit0`.
 ```{r retain}
 Retain = ifelse(is.na(Profit0),0,1)
 mod1 = lm(Retain ~ Online9)
@@ -358,7 +329,7 @@ mod3 = lm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven+Tenur
 summary(mod3)
 hist(mod3$fitted,nclass=50, main ="Histogram of mod3")
 ```
-Andare a considerare il valore dell'$R^2$ per valtutare la bontà del modello non è molto opportuno perchè stiamo prevedendo se il cliente rimane oppure no, quindi si tratta di una variabile binaria. Dall'istogramma possiamo facilmente dedurre ci sono due gruppi abbastanza distinti, quindi quello che possiamo fare è fissare una certa soglia al di sopra della quale possiamo concludere che il cliente è sicuro, mentre al di sotto si trovano quei clienti che probabilmente il prossimo anno cambieranno la banca. Infatti ci sono due mode molto alte e sufficientemente lontane, mentre tra i valori di 0.7 e 0.8, troviamo una "zona grigia", dove la frequenza è molto bassa e i clienti sono abbastanza incerti. Inoltre saremmo interessati ad interpretare i valori dell'istogramma come delle probabilità, anche se ci sono dei valori più grandi di 1. In questo modo sarei in grado di capire sotto quale valore dovrei preoccuparmi del cliente.
+Andare a considerare il valore dell'$R^2$ per valtutare la bontà del modello non è molto opportuno perchè stiamo prevedendo se il cliente rimane oppure no, quindi si tratta di una variabile binaria. Dall'istogramma possiamo facilmente dedurre che ci sono due gruppi abbastanza distinti, quindi quello che possiamo fare è fissare una certa soglia al di sopra della quale possiamo concludere che il cliente è sicuro, mentre al di sotto si trovano quei clienti che probabilmente il prossimo anno cambieranno la banca. Infatti ci sono due mode molto alte e sufficientemente lontane, mentre tra i valori di 0.7 e 0.8, troviamo una "zona grigia", dove la frequenza è molto bassa e i clienti sono abbastanza incerti. Inoltre saremmo interessati ad interpretare i valori dell'istogramma come delle probabilità, anche se ci sono dei valori più grandi di 1. Per questa ragione, è preferibile usare i metodi di classificazione che sono adatti a valori di risposta qualitativi.
 
 ## Analisi di Retain con Regressione logistica
 Proviamo a prevedere il comportamento futuro di un cliente, utilizzando la regressione logistica.
@@ -372,7 +343,7 @@ Questo metodo risulta molto veloce,in quanto si ferma dopo solo 5 iterazioni. In
 ```{r confronto}
 plot(mod3$fitted, glm.out$fitted, xlab="Predicted OLS", ylab="Predicted logit")
 ```
-I dati utilizzati per costruire questo modello non sono bilanciati e quindi questo non è ottimale per fare una previsione più accurata possiamo procedere con il bilanciamento del dataset.
+I dati utilizzati per costruire questo modello non sono bilanciati e quindi questo non è ottimale. Per fare una previsione più accurata possiamo procedere con il bilanciamento del dataset.
 
 # Bilanciamento dataset
 Andando ad osservare la distribuzione della variabile Retain, notiamo che il dataset risulta molto sbilanciato, perchè solamente 5238 clienti decidono di lasciare la banca nell'anno successivo.
@@ -402,10 +373,6 @@ target.test  = df.test$Retain
 
 # Modelli di classificazione con dataset bilanciato
 
-## Decision Tree
-
-Un possibile modello di classificazione da utilizzare, è quello dell'albero di decisione. Questo è un grafo a forma di albero appunto, dove ogni nodo interno rappresenta un test su uno degli attributi, ed ogni ramo rappresenta il risultato di questo test. Quindi il cammino dalla radice fino ad una foglia, rappresenta una regola di classificazione, infatti ogni foglia è associata ad un'etichetta di classe. Il nodo alla radice rappresenta l'intera popolazione, l'algoritmo consiste nello scegliere il miglior attributo su cui fare lo split in modo che le osservazioni con lo stesso valore di quell'attributo vadano a formare dei sottoinsiemi distinti dagli altri. Questi step vengono ripetuti finchè non troviamo un nodo foglia in ogni ramo dell'albero. Nel nostro caso, impostiamo dei parametri diversi da quelli di default, in modo che l'albero non sia nè troppo specifico, nè troppo generico. Infine validiamo il modello sull'insieme di test. 
-
 Per capire qual è il modello migliore per prevedere il comportamento futuro di un cliente, quindi per capire se il cliente rimarrà anche il prossimo anno oppure verrà perso, possiamo analizzare la confusion matrix e le misure ad essa collegate. Nel caso specifico, la variabile target è binaria (vogliamo prevedere se il cliente rimane nella banca anche il prossimo anno oppure no), quindi sono possibili solamente due tipi di errori: coloro che in realtà rimangono fedeli, ma utilizzando il modello, prevediamo che cambieranno, e questi possiamo definirli come "falsi negativi" (FN), o viceversa coloro che vengono predetti come clienti fedeli e poi l'anno successivo non saranno più clienti della nostra banca e questi sono i "falsi positivi" (FP). 
 L'accuratezza di un classificatore si definisce come il rapporto tra le osservazioni predette correttamente e tutte le osservazioni, vorrei che questo valore fosse il più possibile vicino ad 1:
 $$Accuracy=\frac{TN+TP}{TN+FN+TP+FP}$$
@@ -419,6 +386,12 @@ $$Precision=\frac{TP}{TP+FN}$$
 
 * La SPECIFICITA' che rappresenta la percentuale di osservazioni negative che vengono effettivamente classificate come negative:
 $$Specificity=\frac{TN}{TN+FP}$$
+
+## Decision Tree
+
+Un possibile modello di classificazione da utilizzare, è quello dell'albero di decisione. Questo è un grafo a forma di albero appunto, dove ogni nodo interno rappresenta un test su uno degli attributi, ed ogni ramo rappresenta il risultato di questo test. Quindi il cammino dalla radice fino ad una foglia, rappresenta una regola di classificazione, infatti ogni foglia è associata ad un'etichetta di classe. Il nodo alla radice rappresenta l'intera popolazione, l'algoritmo consiste nello scegliere il miglior attributo su cui fare lo split in modo che le osservazioni con lo stesso valore di quell'attributo vadano a formare dei sottoinsiemi distinti dagli altri. Questi step vengono ripetuti finchè non troviamo un nodo foglia in ogni ramo dell'albero. Nel nostro caso, impostiamo dei parametri diversi da quelli di default, in modo che l'albero non sia nè troppo specifico, nè troppo generico. Infine validiamo il modello sull'insieme di test. 
+
+
 ```{r decision tree, message=FALSE}
 library(tree)
 setup<-tree.control(nrow(df.train),mincut = 2, minsize = 6, mindev = 0.001)
@@ -439,7 +412,7 @@ $$\log \left(\frac{p}{1-p}\right)=\mathbb{\beta}^T \mathbf{X}+ \epsilon$$
 Dall'istogramma notiamo che la distribuzione dei valori predetti, rimane molto simile a quella ottenuta con il modello lineare: sempre due picchi abbastanza distanti ed una zona intermedia, dove le frequenze sono piuttosto basse.
 ```{r logistic2, warning=FALSE, message=TRUE}
 glm.out = glm(Retain ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+
-  IncomeGiven+Tenure+District1100+District1200,family=binomial(logit), data=df.train)
+  IncomeGiven+Tenure+District1100+District1200, family=binomial(logit), data=df.train)
 summary(glm.out)
 hist(glm.out$fitted.values,nclass=50, main="Histogram of Logistic Regression")
 pred=predict(glm.out, df.test, type="response")
@@ -454,17 +427,17 @@ cat('Specificity:',specificity, '\n')
 ```
 
 ## KNN
-Un ulteriore modello che possiamo utilizzare è il KNN. Questo algoritmo necessita di un parametro K da fissare e che rappresenta il numero di vicini da considerare nella fase successiva. Dopodichè, per ogni osservazione si considerano le prime K osservazioni più vicine, tra queste si valuta qual è la classe più comune ed infine questa viene assegnata all'osservazione che stiamo etichettando. Dopo aver provato diversi valori di K, in modo da scelgiere il miglior valore per cercare di massimizzare l'accuratezza, formuliamo il modello.
+Un ulteriore modello che possiamo utilizzare è il KNN. Questo algoritmo necessita di un parametro K da fissare e che rappresenta il numero di vicini da considerare nella fase successiva. Dopodichè, per ogni osservazione si considerano le prime K osservazioni più vicine, tra queste si valuta qual è la classe più comune ed infine questa viene assegnata all'osservazione che stiamo etichettando. Dopo aver provato diversi valori di K, in modo da scegliere il miglior valore per cercare di massimizzare l'accuratezza, formuliamo il modello.
 ```{r knn tuning, warning=TRUE}
 set.seed(1)
 train.control=trainControl(method="repeatedcv", number=3, repeats=1)
 fit=train(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven+IncomeZero+IncomeGiven
            +Tenure+District1100+District1200,
-          method="knn",
-          tuneGrid=expand.grid(k=c(4,8,12,16)), 
-          trControl=train.control, 
-          metric="Accuracy",
-          data=df.train)
+           method="knn",
+           tuneGrid=expand.grid(k=c(4,8,12,16)), 
+           trControl=train.control, 
+           metric="Accuracy",
+           data=df.train)
 fit
 ```
 ```{r knn}
@@ -477,18 +450,19 @@ cat('Specificity:',specificity, '\n')
 ```
 
 ## SVM
-Utilizzando infine il metodo del Support Vector Machines, l'obiettivo è quello di trovare un iperpiano in N-1 dimensioni, dove N è il numero di variabili che utilizziamo per prevdere, che riesca a separare le diverse osservazioni a seconda della variabile targetbinaria di appartenenza. I punti più vicini all'iperpiano prendono il nome di vettori di supporto e quello che vogliamo, è fare in modo che la loro distanza dall'iperpiano, che viene definita "margine", sia la più grande possibile in modo da ridurre l'errore di misclassificazione per le nuove osservazioni. I due iperparametri da fissare sono il costo, che rappresenta il trade-off tra l'errore di classificazione e un confine di decisione regolare, e "gamma" che invece stabilisce qual è il peso massimo che una singola osservazione nel training può raggiungere.
+Utilizzando infine il metodo del Support Vector Machines, l'obiettivo è quello di trovare un iperpiano in N-1 dimensioni (dove N è il numero di variabili che utilizziamo per prevedere) che riesca a separare le diverse osservazioni a seconda della variabile target binaria di appartenenza. I punti più vicini all'iperpiano prendono il nome di vettori di supporto e quello che vogliamo è fare in modo che la loro distanza dall'iperpiano, che viene definita "margine", sia la più grande possibile in modo da ridurre l'errore di misclassificazione per le nuove osservazioni. I due iperparametri da fissare sono il costo, che rappresenta il trade-off tra l'errore di classificazione e un confine di decisione regolare, e "gamma" che invece stabilisce qual è il peso massimo che una singola osservazione nel training può raggiungere.
 Dopo aver provato diversi valori, scegliamo la coppia che minimizza l'errore. Per poter scegliere il valore ottimale dei parametri, estraiamo un sample dall'insieme di training, utilizzando il metodo dell'under sampling, in modo da accellare il processo.
 ```{r svm tuning, warning=FALSE}
 library(e1071)
+dim_data_balanced_under = min(sum(Retain==1),sum(Retain==0))*2
 data_balanced_under <- ovun.sample(as.factor(Retain) ~ Profit9+Online9+AgeZero+AgeGiven
                                     +IncomeZero+IncomeGiven+Tenure+District1100
-                                    +District1200, method = "under",N = 10476)$data
+                                    +District1200, method = "under",N = dim_data_balanced_under)$data
 set.seed(1)
 train = sample(1:nrow(data_balanced_under), nrow(data_balanced_under)*0.7)
 df.train=data_balanced_under[train,]
 df.test = data_balanced_under[-train,]
-target.train = data_balanced_under[train,]$Retain
+target.train = df.train$Retain
 target.under.test = df.test$Retain
 g=c(-5, -3, 1)
 c=c(-3,1)
@@ -511,7 +485,7 @@ cat('Specificity:',specificity, '\n')
 ```
 
 # Confronto tra modelli di classificazione
-Un utile modo per confrontare la performance di un modello per un classificatore binario, sono la curva ROC è l'area sotto di essa (AUC). La ROC plotta 1 meno la specificità e la recall (o sensitività), quindi il modello migliore è quello che ha un AUC più vicino ad 1.
+Un utile modo per confrontare la performance di un modello per un classificatore binario, sono la curva ROC e l'area sotto di essa (AUC). La ROC plotta 1 meno la specificità e la recall (o sensitività), quindi il modello migliore è quello che ha un AUC più vicino ad 1.
 ```{r roc, message=FALSE,warning=FALSE}
 library(pROC)
 treeROC = roc(target.test,factor(tree.pred, ordered = TRUE), plot=TRUE, print.auc=TRUE,
@@ -529,7 +503,7 @@ legend("bottomleft", legend = c("Logistic Regression", "Decision Tree", "KNN", "
 Possiamo quindi concludere che il modello che ci dà la migliore previsione relativa al comportamento futuro dei clienti è il KNN, con una precisione e una specificità entrambe oltre il $90\%$.
 
 # Clustering
-Ora, dal dataset senza outliers, consideriamo solo coloro che nel 1999 erano offline (`Online9=0`) e che sono rimasti clienti nel 2000 (`Retain=1`). Inoltre creiamo delle variabili binarie che indicano la fascia d'età e di reddito alla quale ciascun cliente appartiene. Infine discretizziamo la variabile Tenure, che rappresenta gli anni di servizio, utilizzando altre variabili categoriche. In questo modo, siamo in grado di avere tutte le informazioni relative ad un cliente, escluso il profitto, attraverso delle variabili binarie.
+Ora, dal dataset senza outliers, consideriamo solo coloro che nel 1999 erano offline (`Online9=0`) e che sono rimasti clienti nel 2000 (`Retain=1`). Inoltre creiamo delle variabili binarie che indicano la fascia d'età e di reddito alla quale ciascun cliente appartiene. Infine discretizziamo la variabile `Tenure`, che rappresenta gli anni di servizio, utilizzando altre variabili categoriche. In questo modo, siamo in grado di avere tutte le informazioni relative ad un cliente, escluso il profitto, attraverso delle variabili binarie.
 ```{r new dataset, message=FALSE,warning=TRUE}
 detach(data)
 newdata = data[Online9==0 & Retain==1,]
@@ -570,7 +544,7 @@ Tenure3 = ifelse(Tenure>=20&Tenure<30,1,0)
 Tenure4 = ifelse(Tenure>=30&Tenure<40,1,0)
 ```
 
-Possiamo osservare che nel caso in cui in una delle variabili mancasse l'informazione, ovvero compare NA, sia Age che Income assumono valore 0, quindi questo indica un'altra classe! Così per la variabile Tenure: quando è maggiore o uguale a 40, l'osserviazione appartiene alla classe Tenure0.
+Possiamo osservare che nel caso in cui in uno dei valori di `Age` mancasse l'informazione, ovvero compare NA, tutte le variabili `AgeX` assumono il valore 0, quindi questo indica un'altra classe. Stessa cosa accade per la variabile `Income` e quando il valore della variabile `Tenure` è maggiore o uguale a 40.
 
 A questo punto, il nostro obiettivo è quello di applicare un algoritmo di clustering. Quindi vorremmo cercare di raggruppare i clienti che hanno delle caratteristiche simili, in modo da applicare delle politiche di business specifiche del gruppo, per capire quale sia la strategia migliore da applicare con ciascuna tipologia di cliente.
 
@@ -589,7 +563,7 @@ Il metodo di clustering più conosciuto ed utilizzato per la sua immediatezza è
 
 * Ripetere finchè nessun miglioramento è possibile.
 
-Nel caso specifico, consideriamo le variabili binarie relative all'età, al reddito, agli anni di servizio e al distretto di residenza, per formare 25 diversi cluster. All'interno di ciascun cluster andiamo a calcolare due diverse medie, quella per il clienti che sono rimasti Offline anche nel 2000 e coloro che invece in quest'anno sono passati al servizio della banca Online. In quei cluster in cui la differenza è positiva, vuol dire che in media guadagno di più quando il cliente decide di passare al canale online, quindi sarebbe utile portare avanti delle campagne pubblicitarie o applicare sconti per involgliare i clienti a cambiare. Anche se in realtà osserviamo che questa differenza in media non assume valori troppo grandi, la massima differenza è pari a 16 dollari, quindi bisogna tenere conto di questo aspetto quando si scegliarà se e quale strategia adottare.
+Nel caso specifico, consideriamo le variabili binarie relative all'età, al reddito, agli anni di servizio e al distretto di residenza, per formare 25 diversi cluster. All'interno di ciascun cluster andiamo a calcolare due diverse medie, quella per il clienti che sono rimasti Offline anche nel 2000 e coloro che invece in quest'anno sono passati al servizio della banca Online. In quei cluster in cui la differenza è positiva, vuol dire che in media guadagno di più quando il cliente decide di passare al canale online, quindi sarebbe utile portare avanti delle campagne pubblicitarie o applicare sconti per invogliare i clienti a cambiare. Anche se in realtà osserviamo che questa differenza in media non assume valori troppo grandi, la massima differenza è pari a 16 dollari, quindi bisogna tenere conto di questo aspetto quando si scegliarà se e quale strategia adottare.
 ```{r for cluster}
 deltaProfit = Profit0-Profit9
 deltaOnOff = rep(0,num_tot_cluster)
@@ -600,5 +574,5 @@ for(num_cluster in 1:num_tot_cluster) {
   if(is.na(deltaProfitOffline)){deltaProfitOffline=0}
   deltaOnOff[num_cluster] = deltaProfitOnline-deltaProfitOffline
 }
-print(sort(deltaOnOff, decreasing = TRUE))
+sort(deltaOnOff, decreasing = TRUE)
 ```
