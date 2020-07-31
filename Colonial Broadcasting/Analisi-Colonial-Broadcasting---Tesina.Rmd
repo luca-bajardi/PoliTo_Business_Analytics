@@ -1,6 +1,6 @@
 ---
 title: "Analisi Colonial Broadcasting - Tesina"
-author: "Luca Bajardi e Francesca Collini"
+author: "Luca Bajardi e Francesca Collini(s277731)"
 date: "31/07/2020"
 output:
   pdf_document: default
@@ -12,12 +12,12 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 ## Introduzione
 Il dataset che utilizziamo in questa tesina è relativo ai film mandati in onda in America nel 1992 da tre delle principali reti televisive. In particolare nel business case fornito dall'Harvard Business School, facciamo riferimento ad una di queste: la "Colonial Broadcasting Company".
-L'obiettivo è quello di capire quali sono le variabili e come queste interagiscono, nell'influenzare gli ascolti per un determinato programma. Gli ascolti vengono espressi attraverso un valore di rating, nello specifico, ogni punto di rating rappresenta 921000 famiglie americane che stanno guardando il nostro programma.
-Formuliamo diversi modelli di regressione per capire quali sono le variabili migliori da utilizzare per prevedere quale sarà il reting del film al quale siamo interessati.
+L'obiettivo è quello di capire quali siano le variabili e come queste interagiscano, nell'influenzare gli ascolti per un determinato programma. Gli ascolti vengono espressi attraverso un valore di rating, nello specifico, ogni punto di rating rappresenta 921000 famiglie americane che stanno guardando il nostro programma.
+Formuliamo diversi modelli di regressione per capire quali siano le variabili migliori da utilizzare per prevedere il rating del film al quale siamo interessati.
 Il problema principale legato a questo dataset, è che questo è costituito da poche osservazioni, quindi per riuscire a formulare dei modelli più accurati, è necessario ricorrere alla cross-validation.
 
-Inizialmente proviamo a formulare dei modelli con un'unica variabile, quella del rating del programma precedente (è infatti l'unica variabile continua), anche se ovviamente non ci permette di avere una spiegazione completa. Per questo vorremmo introdurre nei modelli, altre variabili.
-Per capire quante e quali variabili andare ad utilizzare, applichiamo il metodo esaustivo, il metodo backward e quello forward, in modo da stabilire qual sia il modello migliore.
+Inizialmente proviamo a formulare dei modelli con un'unica variabile, quella del rating del programma precedente, anche se ovviamente non ci permette di avere una spiegazione completa. Per questo vorremmo introdurre nei modelli, altre variabili.
+Per capire quante e quali variabili andare ad utilizzare, applichiamo il metodo esaustivo, il metodo backward e quello forward, in modo da stabilire quale sia il modello migliore.
 Infine proviamo a formulare dei modelli alternativi andando ad utilizzare le regressioni ridge e lasso, per penalizzare in maniera differente i vari coefficienti delle variabili indipendenti.
 
 ## Esplorazione dei dati
@@ -137,7 +137,7 @@ cv.err$K
 cv.err$delta
 ```
 
-Proviamo con polinomi con grado massimo diverso
+Proviamo con polinomi con grado massimo diverso:
 ```{r LOOCV}
 cv.error=rep(0,8)
 j=1
@@ -148,7 +148,7 @@ for (i in potenze){ #LOOCV su 8 modelli
 }
 cv.error
 ```
-Possiamo concludere quindi che non è detto che nel momento in cui aumentiamo il grado del polinomio, automaticamente diminuisce il valore dell'errore perchè visto che la funzione è molto oscillante stiamo introducendo del rumore.
+Possiamo concludere quindi, che non è detto che nel momento in cui aumentiamo il grado del polinomio, automaticamente diminuisce il valore dell'errore perchè, visto che la funzione è molto oscillante, stiamo introducendo del rumore.
 
 ### K-fold Cross Validation
 Proviamo inoltre ad utilizzare la K-fold Cross Validation. In questo caso specifico, dividiamo l'intero dataset in $K=10$ sottogruppi ed ogni volta utilizziamo un sottoinsieme diverso che svolge la funzione di test set. Questo metodo risulta computazionalmente più veloce perchè andiamo a confrontare meno osservazioni, ma le conclusioni che possiamo trarre sono le stesse.
@@ -230,7 +230,7 @@ regfit.bwd=regsubsets(rating~.,data=CBCr,nvmax=15,method="backward")
 summary(regfit.bwd)
 ```
 
-Possiamo notare che applicando i metodi di selezione `exhaustive`, `forward` e `backward` otteniamo la selezione delle variabili nello stesso ordine.
+Possiamo notare che, applicando i metodi di selezione `exhaustive`, `forward` e `backward` otteniamo la selezione delle variabili nello stesso ordine.
 
 
 A questo punto andiamo a selezionare il modello migliore, andando a trovare quali e quante sono le variabili che ci permettono di prevedere meglio la variabile target. Per questo scopo, andiamo ad utilizzare di nuovo la k-folds cross validation con $k=10$.
@@ -310,11 +310,13 @@ Osservando il grafico del MSE in funzione di $log(\lambda)$, vediamo che c'è un
 bestlam=cv.out$lambda.min
 bestlam
 ```
+
 Utilizzando il valore migliore di $\lambda$ otteniamo che il MSE è:
 ```{r best lambda3}
 ridge.pred=predict(ridge.mod,s=bestlam,newx=x[test,])
 mean((ridge.pred-y.test)^2)
 ```
+
 Visto che questo è il modello migliore vado a prevederlo con tutti i dati e trovo i seguenti coefficienti:
 ```{r best lambda4}
 out=glmnet(x,y,alpha=0)
@@ -334,16 +336,19 @@ set.seed(1)
 cv.out=cv.glmnet(x[train,],y[train],alpha=1)
 plot(cv.out)
 ```
+
 Osservando il grafico del MSE in funzione di $log(\lambda)$, vediamo che c'è una certa variabilità nella stima e che il miglior valore di $\lambda$ per la regressione lasso è:
 ```{r lasso2}
 bestlam=cv.out$lambda.min
 bestlam
 ```
+
 Utilizzando il valore migliore di $\lambda$ otteniamo che il MSE è:
 ```{r lasso3}
 lasso.pred=predict(lasso.mod,s=bestlam,newx=x[test,])
 mean((lasso.pred-y.test)^2)
 ```
+
 Visto che questo è il modello migliore per la regressione lasso vado a prevederlo con tutti i dati e trovo i seguenti coefficienti:
 ```{r lasso4}
 out=glmnet(x,y,alpha=1,lambda=grid)
