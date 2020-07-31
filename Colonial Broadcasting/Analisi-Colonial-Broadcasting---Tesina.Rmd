@@ -10,6 +10,15 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
+## Introduzione
+Il dataset che utilizziamo in questa tesina è relativo ai film mandati in onda in America nel 1992 da tre delle principali reti televisive. In particolare nel business case fornito dall'Harvard Business School, facciamo riferimento ad una di queste: la "Colonial Broadcasting Company".
+L'obiettivo è quello di capire quali sono le variabili e come queste interagiscono, nell'influenzare gli ascolti per un determinato programma. Gli ascolti vengono espressi attraverso un valore di rating, nello specifico, ogni punto di rating rappresenta 921000 famiglie americane che stanno guardando il nostro programma.
+Formuliamo diversi modelli di regressione per capire quali sono le variabili migliori da utilizzare per prevedere quale sarà il reting del film al quale siamo interessati.
+Il problema principale legato a questo dataset, è che questo è costituito da poche osservazioni, quindi per riuscire a formulare dei modelli più accurati, è necessario ricorrere alla cross-validation.
+
+Inizialmente proviamo a formulare dei modelli con un'unica variabile, quella del rating del programma precedente (è infatti l'unica variabile continua), anche se ovviamente non ci permette di avere una spiegazione completa. Per questo vorremmo introdurre nei modelli, altre variabili.
+Per capire quante e quali variabili andare ad utilizzare, applichiamo il metodo esaustivo, il metodo backward e quello forward, in modo da stabilire qual sia il modello migliore.
+Infine proviamo a formulare dei modelli alternativi andando ad utilizzare le regressioni ridge e lasso, per penalizzare in maniera differente i vari coefficienti delle variabili indipendenti.
 
 ## Esplorazione dei dati
 Carichiamo i dati leggendo il file csv e settiamo il seme del generatore pseudo-casuale così da avere i risultati sempre uguali.
