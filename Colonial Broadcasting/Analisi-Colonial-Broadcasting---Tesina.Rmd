@@ -1,18 +1,37 @@
 ---
 title: "Analisi Colonial Broadcasting - Tesina"
-author: "Luca Bajardi e Francesca Collini(s277731)"
-date: "31/07/2020"
+author:
+  - Luca Bajardi:
+      email: luca.bajardi@studenti.polito.it
+      institute: polito
+      correspondence: true
+  - name: Francesca Collini
+    institute: polito
+    email: s277731@studenti.polito.it
+    correspondence: true
+institute:
+  - polito: Dipartimento di Scienze Matematiche, Politecnico di Torino
+date: "31 Luglio 2020"
 output:
-  pdf_document: default
-  word_document: default
+  pdf_document: 
+    number_sections: yes
+    toc: yes
+    toc_depth: 4
+    pandoc_args:
+      - '--lua-filter=scholarly-metadata.lua'
+      - '--lua-filter=author-info-blocks.lua'
 ---
+
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
-## Introduzione
+\newpage
+# Introduzione
 Il dataset che utilizziamo in questa tesina è relativo ai film mandati in onda in America nel 1992 da tre delle principali reti televisive. In particolare nel business case fornito dall'Harvard Business School, facciamo riferimento ad una di queste: la "Colonial Broadcasting Company".
-L'obiettivo è quello di capire quali siano le variabili e come queste interagiscano, nell'influenzare gli ascolti per un determinato programma. Gli ascolti vengono espressi attraverso un valore di rating, nello specifico, ogni punto di rating rappresenta 921000 famiglie americane che stanno guardando il nostro programma.
+
+L'obiettivo è quello di capire quali siano le variabili e come queste interagiscano, nell'influenzare gli ascolti per un determinato programma. Gli ascolti vengono espressi attraverso un valore di rating, nello specifico, ogni punto di rating rappresenta 921000 famiglie americane che stanno guardando il programma.
+
 Formuliamo diversi modelli di regressione per capire quali siano le variabili migliori da utilizzare per prevedere il rating del film al quale siamo interessati.
 Il problema principale legato a questo dataset, è che questo è costituito da poche osservazioni, quindi per riuscire a formulare dei modelli più accurati, è necessario ricorrere alla cross-validation.
 
@@ -20,7 +39,7 @@ Inizialmente proviamo a formulare dei modelli con un'unica variabile, quella del
 Per capire quante e quali variabili andare ad utilizzare, applichiamo il metodo esaustivo, il metodo backward e quello forward, in modo da stabilire quale sia il modello migliore.
 Infine proviamo a formulare dei modelli alternativi andando ad utilizzare le regressioni ridge e lasso, per penalizzare in maniera differente i vari coefficienti delle variabili indipendenti.
 
-## Esplorazione dei dati
+# Esplorazione dei dati
 Carichiamo i dati leggendo il file csv e settiamo il seme del generatore pseudo-casuale così da avere i risultati sempre uguali.
 ```{r read}
 rm(list =ls())
@@ -59,7 +78,7 @@ train=sample(88,88*0.7)
 test=(-train)
 ```
 
-## Regressione su prevratings
+# Regressione su prevratings
 Consideriamo il dataset CBC, ma per la formulazione del modello di regressione prendiamo solo il sottoinsieme train:
 ```{r lm1}
 lm.fit=lm(rating~prevratings,data=CBC,subset=train)
@@ -90,7 +109,7 @@ mean((rating-predict(lm.fit,CBC))[test]^2)
 Il MSE di un solo modello non è una misura molto indicativa perchè non abbiamo termini di paragone, quindi dobbiamo calcolarlo anche per altri modelli e valutare quale sia il migliore andando a selezionare quello con l'errore più piccolo.
 
 
-## Regressione su poly(prevratings,pwr)
+# Regressione su poly(prevratings,pwr)
 
 Creiamo dei modelli utilizzando polinomi di vario grado attraverso la funzione `poly(prevratings,pwr)` (la funzione restituisce una matrice le cui colonne sono a base di polinomi ortogonali, il che significa in sostanza che ogni colonna è una combinazione lineare delle variabili prevratings, prevratings^2, prevratings^3, ...).
 ```{r MSE_lm_n, options = options(digits=4)}
@@ -111,11 +130,11 @@ ma
 
 Possiamo vedere che, aumentando il grado dei polinomi in funzione di `prevratings`, non diminuisce di molto il MSE, ma aumenta l'$R^2$, questo significa che stiamo facendo overfitting. Infatti con l'aumento della complessità del modello, $R^2$ nel sample, mal che vada rimane lo stesso perchè sto aggiungendo altri modi per spiegare  la variabile che voglio prevedere, quando però andiamo a testare il modello su un insieme esterno, questo non è necessariamente vero perchè, anche se sta diminuendo il bias, contemporaneamente sta aumentando la varianza.
 
-## Regressione con cross-validation
+# Regressione con cross-validation
 Poichè il nostro dataset è piuttosto piccolo per eseguire un test indipendente, può essere seguita la strategia della cross-validation. La tecnica consiste nel suddividere in $K$ sottoinsiemi disgiunti i nostri dati, per ogni sottoinsime $k-esimo$ formulare un modello e calcolare il $MSE_k$ utilizzando i dati di partenza andando però ad escludere il sottoinsieme in questione, testare poi questo modello su quest'ultimo sottoinsieme. Così ogni sottoinsieme svolge $K-1$ volte il ruolo di training set e esattamente una volta il ruolo di test set. Il MSE complessivo del modello è:
 $$CV(K) = \displaystyle \sum_{k=1}^{K} \frac{n_k}{n}MSE_k.$$
 
-### Leave-One-Out Cross Validation
+## Leave-One-Out Cross Validation
 
 Nel caso limite in cui $K=n$, utilizziamo l'approccio Leave-One-Out Cross Validation. Utilizzando quindi $K=88$, calcoliamo l'errore di ogni osservazione per la previsione fatta andando ad escludere quel dato e poi facendo semplicemente la media su tutti i valori.
 ```{r loocv, options = options(digits=7)}
@@ -150,7 +169,7 @@ cv.error
 ```
 Possiamo concludere quindi, che non è detto che nel momento in cui aumentiamo il grado del polinomio, automaticamente diminuisce il valore dell'errore perchè, visto che la funzione è molto oscillante, stiamo introducendo del rumore.
 
-### K-fold Cross Validation
+## K-fold Cross Validation
 Proviamo inoltre ad utilizzare la K-fold Cross Validation. In questo caso specifico, dividiamo l'intero dataset in $K=10$ sottogruppi ed ogni volta utilizziamo un sottoinsieme diverso che svolge la funzione di test set. Questo metodo risulta computazionalmente più veloce perchè andiamo a confrontare meno osservazioni, ma le conclusioni che possiamo trarre sono le stesse.
 
 ```{r k-fold CV}
@@ -170,7 +189,7 @@ cv.error.10
 detach(CBC)
 ```
 
-## Regressione con più variabili
+# Regressione con più variabili
 
 Questi diversi esperimenti, probabilmente ci suggeriscono che utilizzare solo la variabile "`prevratings`" potrebbe non essere sufficiente per prevedere il rating.
 Con la funzione `regsubsets` possiamo, in modo automatico, selezionare quelle variabili che sono le migliori per predire la variabile risposta, quando viene fissato il numero totale di variabili da utilizzare nel modello. Il termine "migliore" si riferisce alle prestazioni, guardando la RSS. Utilizziamo il dataset eliminando la colonna che contiene la media dei rating di programmi mandati in onda dalle reti concorrenti. Infatti, questo valore è molto difficile da prevedere e potrebbe essere rischioso includerlo nel modello in quanto potrebbe portare  a conclusioni sbagliate.
@@ -220,7 +239,7 @@ points(u,reg.summary$bic[u],col="red",cex=2,pch=20)
 
 Analizzando i diversi grafici ed andando ad individuare i punti di ottimo (il massimo per l'$R^2_{adj}$ e il minimo per gli altri due indici), osserviamo che secondo l'$R^2_{adj}$ il numero ottimale di variabili da considerare è 11, scegliendo il criterio del $C_p$, invece questo scende ad 8, ed si riduce infine a 4, andando a guardare il $BIC$. 
 
-### Forward/Backward Stepwise Selection
+## Forward/Backward Stepwise Selection
 Metodi alternativi per selezionare il miglior sottoinsieme di variabili, sono quelli della selezione greedy. Possiamo procedere o con la selezione "forward", dove partiamo dal modello nullo ed aggiungiamo una variabile per volta, scegliendo quella che porta al più alto miglioramento, oppure con la selezione "backward", in cui seguiamo la strada al contrario, quindi partiamo dal modello completo andando ad eliminare una variabile alla volta.
 
 ```{r F/B Stepwise Selection}
@@ -272,7 +291,8 @@ reg.best.pred=predict(best.fit,CBCr[test,],id=min)
 mean( (CBCr$rating[test]-reg.best.pred)^2)
 ```
 
-## Regressione Ridge e Lasso 
+\newpage
+# Regressione Ridge e Lasso 
 Nel metodo dei minimi quadrati standard, la funzione obiettivo da minimizzare è:
 $$\sum_{k=1}^{n}\left({Y_k}- \sum_{j=0}^{q}{\beta_j}X^{(k)}_j\right)^2.$$
 Quando però vogliamo diminuire il valore della varianza e quindi penalizzare i coefficienti di regressione troppo grandi per cercare di evitare l'overfitting, possiamo introdurre dei termini aggiuntivi alla funzione obiettivo:
@@ -295,7 +315,7 @@ grid=10^seq(10,-2,length=100)
 
 La funzione `glmnet` della package `glmnet` implementa sia i due casi estremi di regressione ridge e lasso, sia regressioni intermedie a seconda del valore di $\alpha$ che fissiamo.
 
-### Regressione ridge
+## Regressione ridge
 Inizialmente otteniamo 100 diversi modelli di regressione, uno per ogni valore di $\lambda$, e poi tramite la cross-validation scegliamo il miglior valore di $\lambda$.
 ```{r ridge, warning=TRUE, message=TRUE}
 ridge.mod=glmnet(x[train,],y[train],alpha=0,lambda=grid)
@@ -328,7 +348,7 @@ ridge.coef
 plot(ridge.mod)
 ```
 
-### Regressione lasso
+## Regressione lasso
 Svolgiamo lo stesso procedimento con la regressione lasso:
 ```{r lasso}
 lasso.mod=glmnet(x[train,],y[train],alpha=1,lambda=grid)
