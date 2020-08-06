@@ -1,5 +1,9 @@
 # PoliTo_Business_Analytics
-Questo repository include tutti gli homework del corso Business Analytics al Politecnico di Torino.
+Questo repository include tutti gli homework del corso <a href="https://didattica.polito.it/pls/portal30/gap.pkg_guide.viewGap?p_cod_ins=03PVFNG&p_a_acc=2020&p_header=S&p_lang=IT">Business Analytics</a> del Politecnico di Torino.
+
+Per l'analisi dei dati abbiamo utilizzato il <a href="https://www.r-project.org/">linguaggio di programmazione R</a>.
+
+Per la formattazione del testo e l'impaginazione degli homework abbiamo utilizzato <a href="https://rmarkdown.rstudio.com/">R Markdown</a> e i <a href="https://github.com/pandoc/lua-filters">Lua filters</a>.
 
 ### Analisi Colonial Broadcasting
 Il dataset che utilizziamo in questa tesina è relativo ai film mandati in onda in America nel 1992 da tre delle principali reti televisive. In particolare nel business case fornito dall’Harvard Business School, facciamo riferimento ad una di queste: la “Colonial Broadcasting Company”.
